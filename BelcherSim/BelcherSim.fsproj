@@ -49,7 +49,7 @@
   <ItemGroup>
     <Compile Include="Mancala.fs" />
     <Compile Include="Cards.fs" />
-    <Compile Include="Program.fs" />
+    <Compile Include="Simulation.fs" />
     <None Include="App.config" />
     <None Include="packages.config" />
   </ItemGroup>

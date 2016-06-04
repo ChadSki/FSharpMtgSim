@@ -13,12 +13,9 @@ do
         | GitaxianProbe         | LandGrant    | Manamorphose    | PyreticRitual
         | RiteOfFlame           | SeethingSong | SerumPowder     | SimianSpiritGuide
         | StreetWraith          | Taiga        | TinderWall
-          -> { min=0; max=3 }  // Non-core
+          -> { min=0; max=4 }  // Non-core
 
     let combos = DeckCombinations myMetaDeck 60
-    let total = combos |> Seq.map (fun combo -> printfn "%s" (PrettyPrintDeck combo))
-                       |> Seq.length
+    let total = combos |> Seq.length
 
     printfn "Total = %d" total
-    printfn "Press any key to exit."
-    System.Console.ReadKey() |> ignore

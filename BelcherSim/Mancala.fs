@@ -1,5 +1,20 @@
 ﻿module Mancala
 
+// This module defines what I call the 'mancala sequence'. It was developed to iterate through
+// Magic the Gathering deck possibilities. Conceptually, it is a lot like the board game Mancala.
+//
+// MtG allows up to four copies of any one card in print. All of these copies are functionally
+// identical, and a deck listing doesn't involve the order of cards -- just their counts.
+//
+// Mancala is a literal 'board' game. Slots are carved into a board in a row. Tokens (usually
+// beads or stones) fill these slots. Players pick up and move tokens from slot to slot. Flow
+// across the board is unidirectional.
+//
+// The mancala sequence imagines a board where each slot represents one MtG card. The slot may be
+// empty (no copies of that card) or filled with up to four tokens (maximum copies of that card).
+// Tokens are moved across the board in such a way that each successive state represents a unique
+// deck combination.
+
 open System
 open System.Collections.Generic
 open System.IO
@@ -19,25 +34,25 @@ let InitialCombination (emptyBoard:Board) totalTokens : Board =
     // Distribute the tokens starting with the leftmost slots.
     let filledBoard =
         emptyBoard |> List.map (fun slot ->
-            let remainderIfGreedy = !numTokens - slot.max
-            match remainderIfGreedy with
+            match !numTokens - slot.max with
 
             // We want more than is available. Take what is left.
-            | remainder when remainder < 0 -> let allThatsLeft = !numTokens
-                                              numTokens := 0
-                                              { count = allThatsLeft
-                                                max = slot.max }
+            | leftover when leftover < 0 ->
+                let allThatsLeft = !numTokens
+                numTokens := 0
+                { count = allThatsLeft; max = slot.max }
 
-            // There's enough to take our fill!
-            | _ -> numTokens := remainderIfGreedy
-                   { count = slot.max
-                     max = slot.max })
+            | _ ->  // There's enough to fill the slot to the brim
+                numTokens := !numTokens - slot.max
+                { count = slot.max; max = slot.max })
 
     if !numTokens > 0 then raise (new ArgumentException "Too many tokens to fit in these slots")
     else filledBoard
 
 type OverflowResult = SpilledOffEnd | ValidState
 
+// My definition of the mancala sequence is iterative, so I need a datatype with mutable state
+// to keep track of tokens as I slide them around.
 type MutBoard = MutSlot list
 and MutSlot =
     { mutable counter:int; max:int }
@@ -51,9 +66,9 @@ let rec NextCombination (oldBoard:Board) : Board option =
     let mutDeck = oldBoard |> List.map (fun slot -> { counter = slot.count; max = slot.max })
     let lastPos = oldBoard.Length - 1
 
-    // The algorithm often involves 'lifting' tokens up to move them around. This var represents the
-    // number of tokens currently lifted. By the time we return (or recurse), lifted should be empty
-    // so that we aren't losing any tokens.
+    // The algorithm involves 'lifting' tokens up to move them around. This var represents the
+    // number of tokens currently lifted. By the time we return (or recurse), lifted should be
+    // empty so that we aren't losing any tokens.
     let lifted = ref 0
 
     // First lift all the tokens from the last slot
@@ -139,7 +154,7 @@ let rec NextCombination (oldBoard:Board) : Board option =
 let MancalaSequence emptyBoard numTokens =
     // #region Debug
     let prevElapsedSeconds = ref 0.
-    let chunkSize = 100000
+    let chunkSize = 1000000
     let total = ref 0
     let stopWatch = System.Diagnostics.Stopwatch.StartNew()
     let outFile = new StreamWriter("output-mtg.txt")
@@ -156,13 +171,10 @@ let MancalaSequence emptyBoard numTokens =
         let currBoard = ref firstBoard
         total := !total + 1
 
-        // TODO Turn this tail-recursive
         let doneIterating = ref false
         while not !doneIterating do
             match (NextCombination !currBoard) with
-            | Some board ->
-                yield board
-                currBoard := board
+            | Some newBoard ->
 
                 // #region Debug
                 total := !total + 1
@@ -170,15 +182,16 @@ let MancalaSequence emptyBoard numTokens =
                     let elapsedSeconds = stopWatch.Elapsed.TotalSeconds
                     let averageSecondsPerChunk = elapsedSeconds / (float (!total / chunkSize))
                     myprint (sprintf "%s#%9d, %5.2f sec/chunk, %8.3f total sec, %5.3f since last"
-                                     (PrettyPrintBoard !currBoard) !total averageSecondsPerChunk
+                                     (PrettyPrintBoard newBoard) !total averageSecondsPerChunk
                                      elapsedSeconds (elapsedSeconds - !prevElapsedSeconds))
                     prevElapsedSeconds := elapsedSeconds
-                ()
+                ()  // useful breakpoint location
                 // #endregion
 
-            | None ->
-                doneIterating := true
+                yield newBoard
+                currBoard := newBoard
 
+            | None ->
                 // #region Debug
                 stopWatch.Stop()
                 myprint (sprintf "Finished at %s" (DateTime.Now.ToString()))
@@ -187,4 +200,5 @@ let MancalaSequence emptyBoard numTokens =
                 myprint (sprintf "              %f total seconds" stopWatch.Elapsed.TotalSeconds)
                 outFile.Close()
                 // #endregion
+                doneIterating := true
     }
