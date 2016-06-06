@@ -154,7 +154,7 @@ let rec NextCombination (oldBoard:Board) : Board option =
 let MancalaSequence emptyBoard numTokens =
     // #region Debug
     let prevElapsedSeconds = ref 0.
-    let chunkSize = 1000000
+    let chunkSize = 4194304
     let total = ref 0
     let stopWatch = System.Diagnostics.Stopwatch.StartNew()
     let outFile = new StreamWriter("output-mtg.txt")
