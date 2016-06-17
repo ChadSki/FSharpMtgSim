@@ -2,8 +2,9 @@
 
 open System
 open Microsoft.FSharp.Collections
-open Cards
 open Mancala
+open Cards
+open Deck
 
 // individual deck score
 let simScore deck =
