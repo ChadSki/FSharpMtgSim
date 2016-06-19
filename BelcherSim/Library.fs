@@ -17,7 +17,7 @@ let PrettyPrintLibrary (lib:Library) =
 
     sprintf "Library %d cards: %s%s" lib.Length libraryTop ellipse
 
-// Pretty sure this provider is thread-safe
+// This crypto provider is thread-safe FYI
 let cryptoProvider = new RNGCryptoServiceProvider()
 
 // Return a new, shuffled list
@@ -29,8 +29,8 @@ let Shuffle (original:Library) : Library =
     while !n > 1 do
         // Get random index
         cryptoProvider.GetBytes(rnd)
-        n := !n - 1
         let k = int32 (Array.get rnd 0) % !n
+        n := !n - 1
 
         // Swap
         let temp = Array.get deck k
@@ -39,8 +39,8 @@ let Shuffle (original:Library) : Library =
 
     Array.toList deck
 
-let AsLibrary (deck:Deck) : Library =
-    deck
-    |> List.map (fun (card, num) -> [for i in 1..num -> card])
-    |> List.concat
-    |> Shuffle
+// Take a deck definition and actually instatiate that many cards
+let AsLibrary deck =
+    deck |> List.map (fun (card, num) -> [for i in 1..num -> card])
+         |> List.concat
+         |> Shuffle
