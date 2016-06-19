@@ -12,9 +12,9 @@ and Range = { min:int; max:int }
 type Deck = (Card * int) list
 
 // Generate a string that represents the given deck state
-let PrettyPrintDeck (deck:Deck) = deck
-                                  |> List.map (fun (_, count) -> sprintf "%d " count)
-                                  |> List.reduce (+)
+let PrettyPrintDeck (deck:Deck) =
+    deck |> List.map (fun (_, count) -> sprintf "%d " count)
+         |> List.reduce (+)
 
 
 // Given a metadeck and number of cards, creates the inital MancalaSequence board
@@ -27,7 +27,7 @@ let MetaDeckToEmptyBoard (metaDeck:MetaDeck) (totalCards:int) : Board * int =
                                             max = (range.max - range.min) })
 
     // In F#, `!` is used to access a ref cell. It's not logical negation.
-    if !numCards < 0 then raise (new ArgumentException "Too few cards to distribute minimums")
+    if !numCards < 0 then raise (new ArgumentException "Too few cards to distribute minimums required by the deck definition.")
     else emptyBoard, !numCards
 
 // Given a metadeck and MancalaSequence board state, returns the corresponding deck

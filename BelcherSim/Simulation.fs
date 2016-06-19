@@ -5,18 +5,19 @@ open Microsoft.FSharp.Collections
 open Mancala
 open Cards
 open Deck
+open Library
 
 // individual deck score
-let simScore deck =
+let SimScore deck =
     printfn "%s" (PrettyPrintDeck deck)
     0.0
 
 // keeps track of best-performing deck
-let exploreDecks metaDeck =
+let ExploreDecks metaDeck =
     let combos = DeckCombinations metaDeck 60
     let best = ref 0.0
     for deck in combos |> Seq.take(120) do
-        let score = simScore deck
+        let score = SimScore deck
         if score > !best then best := score
 
 do
@@ -30,5 +31,15 @@ do
         | StreetWraith          | Taiga        | TinderWall
           -> { min=0; max=4 }  // Non-core
 
-    exploreDecks myMetaDeck
+    //ExploreDecks myMetaDeck
+
+    let combos = DeckCombinations myMetaDeck 60
+    let firstCombo = combos |> Seq.take 1
+                            |> Seq.exactlyOne
+                            |> AsLibrary
+    printfn "%s" (PrettyPrintLibrary firstCombo)
+    let foo = Shuffle firstCombo
+    printfn "%s" (PrettyPrintLibrary foo)
+    printfn "%s" (PrettyPrintLibrary ((Shuffle foo) |> Seq.take 15
+                                                    |> Seq.toList))
     ()
