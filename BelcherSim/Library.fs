@@ -1,6 +1,7 @@
 ﻿module Library
 
-open System.Security.Cryptography
+open System
+open CryptoRandom
 open Cards
 open Deck
 
@@ -17,19 +18,16 @@ let PrettyPrintLibrary (lib:Library) =
 
     sprintf "Library %d cards: %s%s" lib.Length libraryTop ellipse
 
-// This crypto provider is thread-safe FYI
-let cryptoProvider = new RNGCryptoServiceProvider()
+let rng = new CryptoRandom()
 
-// Return a new, shuffled list
+// Return a new, shuffled list. Fisher-Yates algorithm.
 let Shuffle (original:Library) : Library =
     let deck = List.toArray original
     let n = ref deck.Length
-    let rnd : byte [] = [|0uy|]
 
     while !n > 1 do
-        // Get random index
-        cryptoProvider.GetBytes(rnd)
-        let k = int32 (Array.get rnd 0) % !n
+        // Choose random index
+        let k = rng.Next !n
         n := !n - 1
 
         // Swap

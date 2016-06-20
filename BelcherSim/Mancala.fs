@@ -157,7 +157,7 @@ let MancalaSequence emptyBoard numTokens =
     let chunkSize = 4194304
     let total = ref 0
     let stopWatch = System.Diagnostics.Stopwatch.StartNew()
-    let outFile = new StreamWriter("output-mtg.txt")
+    let outFile = new StreamWriter("output-mtg2.txt")
     let myprint (str:string) =
         outFile.WriteLine(str)
         printfn "%s" str

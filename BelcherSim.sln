@@ -1,9 +1,11 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2013
-VisualStudioVersion = 12.0.31101.0
+# Visual Studio 14
+VisualStudioVersion = 14.0.25123.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "BelcherSim", "BelcherSim\BelcherSim.fsproj", "{EA8380DD-E5A2-4E05-83D4-15C8F56A8D71}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CryptoRandom", "CryptoRandom\CryptoRandom.csproj", "{78A2FDCB-555C-4257-8376-59095FE589B5}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +17,10 @@ Global
 		{EA8380DD-E5A2-4E05-83D4-15C8F56A8D71}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{EA8380DD-E5A2-4E05-83D4-15C8F56A8D71}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{EA8380DD-E5A2-4E05-83D4-15C8F56A8D71}.Release|Any CPU.Build.0 = Release|Any CPU
+		{78A2FDCB-555C-4257-8376-59095FE589B5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{78A2FDCB-555C-4257-8376-59095FE589B5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{78A2FDCB-555C-4257-8376-59095FE589B5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{78A2FDCB-555C-4257-8376-59095FE589B5}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
