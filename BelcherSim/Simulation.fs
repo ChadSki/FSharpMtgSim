@@ -6,19 +6,36 @@ open Mancala
 open Cards
 open Deck
 open Library
+open Game
 
 // individual deck score
 let SimScore deck =
     printfn "%s" (PrettyPrintDeck deck)
-    0.0
+    if AttemptWin deck 7
+    then 1.0
+    else 0.0
 
-// keeps track of best-performing deck
+// keeps track of best-performing decks
 let ExploreDecks metaDeck =
+    // TODO for range in metadeck, create mapping of
+    // Card -> numCards:int ->(numWins:int, numGames:int)
+    // Even if we can't save the results of each individual deck, we can
+    // get an idea of how good having N of a certain card is.
+
     let combos = DeckCombinations metaDeck 60
-    let best = ref 0.0
+
+    // The first is best by default
+    let bestDeck = ref (combos |> Seq.take(1)
+                               |> Seq.exactlyOne)
+    let bestScore = ref 0.0
+
     for deck in combos |> Seq.take(120) do
         let score = SimScore deck
-        if score > !best then best := score
+        if score > !bestScore then
+            bestScore := score
+            bestDeck := deck
+
+    printfn "The best deck is %s" (PrettyPrintDeck !bestDeck)
 
 do
     let myMetaDeck = function
@@ -31,15 +48,5 @@ do
         | StreetWraith          | Taiga        | TinderWall
           -> { min=0; max=4 }  // Non-core
 
-    //ExploreDecks myMetaDeck
-
-    let combos = DeckCombinations myMetaDeck 60
-    let firstCombo = combos |> Seq.take 1
-                            |> Seq.exactlyOne
-                            |> AsLibrary
-    printfn "%s" (PrettyPrintLibrary firstCombo)
-    let foo = Shuffle firstCombo
-    printfn "%s" (PrettyPrintLibrary foo)
-    printfn "%s" (PrettyPrintLibrary ((Shuffle foo) |> Seq.take 15
-                                                    |> Seq.toList))
+    ExploreDecks myMetaDeck
     ()
