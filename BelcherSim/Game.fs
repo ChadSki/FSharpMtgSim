@@ -14,6 +14,7 @@ type GameState(library: Card list,
                moxen: (ManaColor * bool) list,  // Imprinted Chrome Mox colors, and whether they've been spent
                graveyard: Card list,
                mana: ManaAmount,
+               pendingCosts: ManaAmount,
                stormCount: int) =
 
     member val Library = library with get, set
@@ -22,6 +23,7 @@ type GameState(library: Card list,
     member val Moxen = moxen with get, set
     member val Graveyard = graveyard with get, set
     member val Mana = mana with get, set
+    member val PendingCosts = pendingCosts with get, set
     member val StormCount = stormCount with get, set
     member this.Clone() = this.MemberwiseClone() :?> GameState
 
@@ -30,8 +32,8 @@ let rec TakeAction (gs:GameState) : bool =
 
     // Paying the life cost, GitaxianProbe is effectively free.
     // Draw a card and put GitaxianProbe in the graveyard.
-    while gs.Hand |> List.exists ((=) GitaxianProbe) do
-        let newHand = RemoveFromCardGroup gs.Hand GitaxianProbe
+    while gs.Hand |> HasCard GitaxianProbe do
+        let newHand = RemoveOneCard gs.Hand GitaxianProbe
         let newLibrary, drawn = Draw 1 gs.Library
         gs.Hand <- List.append newHand drawn
         gs.Library <- newLibrary
@@ -39,24 +41,24 @@ let rec TakeAction (gs:GameState) : bool =
 
     // Paying the life cost, StreetWraith is effectively free.
     // Draw a card and put StreetWraith in the graveyard.
-    while gs.Hand |> List.exists ((=) StreetWraith) do
-        let newHand = RemoveFromCardGroup gs.Hand StreetWraith
+    while gs.Hand |> HasCard StreetWraith do
+        let newHand = RemoveOneCard gs.Hand StreetWraith
         let newLibrary, drawn = Draw 1 gs.Library
         gs.Hand <-  List.append newHand drawn
         gs.Library <- newLibrary
         gs.Graveyard <- StreetWraith :: gs.Graveyard
 
     // Cast LED now and increase the storm count. We can use it for mana later.
-    while gs.Hand |> List.exists ((=) LionsEyeDiamond) do
-        gs.Hand <- RemoveFromCardGroup gs.Hand LionsEyeDiamond
+    while gs.Hand |> HasCard LionsEyeDiamond do
+        gs.Hand <- RemoveOneCard gs.Hand LionsEyeDiamond
         gs.Battlefield <- (LionsEyeDiamond, false) :: gs.Battlefield
         gs.StormCount <- gs.StormCount + 1
 
     // ChromeMox imprints a colored card, then can tap to generate
     // mana of those colors. Even if nothing is imprinted, it helps
     // boost the storm count.
-    while gs.Hand |> List.exists ((=) ChromeMox) do
-        gs.Hand <- RemoveFromCardGroup gs.Hand ChromeMox
+    while gs.Hand |> HasCard ChromeMox do
+        gs.Hand <- RemoveOneCard gs.Hand ChromeMox
         gs.Battlefield <- (ChromeMox, false) :: gs.Battlefield
         gs.StormCount <- gs.StormCount + 1
 
@@ -64,23 +66,25 @@ let rec TakeAction (gs:GameState) : bool =
         match ChooseImprint gs.Hand with
         | None -> ()
         | Some imprint ->
-            gs.Hand <- RemoveFromCardGroup gs.Hand imprint
+            gs.Hand <- RemoveOneCard gs.Hand imprint
             gs.Moxen <- (Color (Cost imprint), false) :: gs.Moxen
 
     // Exile ElvishSpiritGuide to provide green mana.
-    while gs.Hand |> List.exists ((=) ElvishSpiritGuide) do
-        gs.Hand <- RemoveFromCardGroup gs.Hand ElvishSpiritGuide
+    while gs.Hand |> HasCard ElvishSpiritGuide do
+        gs.Hand <- RemoveOneCard gs.Hand ElvishSpiritGuide
         gs.Mana <- gs.Mana + oneGreen
 
     // Exile SimianSpiritGuide to provide green mana.
-    while gs.Hand |> List.exists ((=) SimianSpiritGuide) do
-        gs.Hand <- RemoveFromCardGroup gs.Hand SimianSpiritGuide
+    while gs.Hand |> HasCard SimianSpiritGuide do
+        gs.Hand <- RemoveOneCard gs.Hand SimianSpiritGuide
         gs.Mana <- gs.Mana + oneRed
 
-    // Cast all TinderWalls we can
-    while gs.Hand |> List.exists ((=) TinderWall) &&
-          gs.Mana.green + gs.Mana.redgreen > 0 do
-        ()
+    // Cast all TinderWalls we can.
+    while gs.Hand |> HasCard TinderWall &&
+          CanPlay TinderWall gs.PendingCosts gs.Mana do
+        gs.PendingCosts <- gs.PendingCosts + Cost TinderWall
+        gs.Hand <- RemoveOneCard gs.Hand TinderWall
+        gs.Battlefield <- (TinderWall, false) :: gs.Battlefield
 
     false
 
@@ -108,7 +112,7 @@ let rec MulliganOrPlay (deck:Deck) (handSize:int) : bool =
             let startingMana = { red=0; green=numCott; redgreen=0; colorless=0; other=0 }
 
             // Start playing with this hand
-            TakeAction (new GameState (library, hand, [], [], [], startingMana, 0))
+            TakeAction (new GameState (library, hand, [], [], [], startingMana, noMana, 0))
 
         else
             // Can we do the special mulligan?

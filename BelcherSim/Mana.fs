@@ -105,6 +105,12 @@ let Cost = function
     | Taiga ->                 noMana
     | TinderWall ->            { red=0; green=1; redgreen=0; colorless=0; other=0 }
 
+
+let CanPlay card pendingCosts manaPool =
+    match manaPool - (pendingCosts + Cost card) with
+    | None -> false
+    | Some _ -> true
+
 type ManaColor =
      | Red
      | Green

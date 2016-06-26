@@ -10,7 +10,10 @@ let Draw n cardGroup =
     cardGroup |> Seq.skip n |> Seq.toList,
     cardGroup |> Seq.take n |> Seq.toList
 
-let RemoveFromCardGroup cardgroup card : Card list =
+let HasCard card cardGroup =
+    cardGroup |> List.exists ((=) card)
+
+let RemoveOneCard cardgroup card : Card list =
     let wanted, others = cardgroup |> List.partition ((=) card)
     List.append others (wanted |> Seq.skip 1 |> Seq.toList)
 
