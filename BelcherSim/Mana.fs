@@ -118,6 +118,13 @@ type ManaColor =
      | Colorless
      | Other
 
+let ColorLabel = function
+    | Red -> "Red"
+    | Green -> "Green"
+    | RedGreen -> "RedGreen"
+    | Colorless -> "Colorless"
+    | Other -> "Other"
+
 let Color = function
     | { red=r; green=g; redgreen=rg; colorless=_; other=_ }
       when (r > 0 && g > 0) || rg > 0

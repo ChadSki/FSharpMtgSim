@@ -1,6 +1,7 @@
 ﻿module Game
 
 open System
+open Logging
 open Cards
 open Deck
 open CardGroup
@@ -33,6 +34,7 @@ let rec TakeAction (gs:GameState) : bool =
     // Paying the life cost, GitaxianProbe is effectively free.
     // Draw a card and put GitaxianProbe in the graveyard.
     while gs.Hand |> HasCard GitaxianProbe do
+        log "Playing GitaxianProbe"
         let newHand = RemoveOneCard gs.Hand GitaxianProbe
         let newLibrary, drawn = Draw 1 gs.Library
         gs.Hand <- List.append newHand drawn
@@ -42,6 +44,7 @@ let rec TakeAction (gs:GameState) : bool =
     // Paying the life cost, StreetWraith is effectively free.
     // Draw a card and put StreetWraith in the graveyard.
     while gs.Hand |> HasCard StreetWraith do
+        log "Playing StreetWrait.h"
         let newHand = RemoveOneCard gs.Hand StreetWraith
         let newLibrary, drawn = Draw 1 gs.Library
         gs.Hand <-  List.append newHand drawn
@@ -50,6 +53,7 @@ let rec TakeAction (gs:GameState) : bool =
 
     // Cast LED now and increase the storm count. We can use it for mana later.
     while gs.Hand |> HasCard LionsEyeDiamond do
+        log "Playing LionsEyeDiamond."
         gs.Hand <- RemoveOneCard gs.Hand LionsEyeDiamond
         gs.Battlefield <- (LionsEyeDiamond, false) :: gs.Battlefield
         gs.StormCount <- gs.StormCount + 1
@@ -58,30 +62,36 @@ let rec TakeAction (gs:GameState) : bool =
     // mana of those colors. Even if nothing is imprinted, it helps
     // boost the storm count.
     while gs.Hand |> HasCard ChromeMox do
+        log "Playing ChromeMox."
         gs.Hand <- RemoveOneCard gs.Hand ChromeMox
         gs.Battlefield <- (ChromeMox, false) :: gs.Battlefield
         gs.StormCount <- gs.StormCount + 1
 
         // If we imprinted a card, add its color to the list of moxen.
         match ChooseImprint gs.Hand with
-        | None -> ()
+        | None -> log "Nothing was imprinted."
         | Some imprint ->
+            let imprintColor = Color (Cost imprint)
+            log (sprintf "Imprinted %s for %s." (CardLabel imprint) (ColorLabel imprintColor))
             gs.Hand <- RemoveOneCard gs.Hand imprint
-            gs.Moxen <- (Color (Cost imprint), false) :: gs.Moxen
+            gs.Moxen <- (imprintColor, false) :: gs.Moxen
 
     // Exile ElvishSpiritGuide to provide green mana.
     while gs.Hand |> HasCard ElvishSpiritGuide do
+        log "Playing ElvishSpiritGuide."
         gs.Hand <- RemoveOneCard gs.Hand ElvishSpiritGuide
         gs.Mana <- gs.Mana + oneGreen
 
     // Exile SimianSpiritGuide to provide green mana.
     while gs.Hand |> HasCard SimianSpiritGuide do
+        log "Playing SimianSpiritGuide."
         gs.Hand <- RemoveOneCard gs.Hand SimianSpiritGuide
         gs.Mana <- gs.Mana + oneRed
 
     // Cast all TinderWalls we can.
     while gs.Hand |> HasCard TinderWall &&
           CanPlay TinderWall gs.PendingCosts gs.Mana do
+        log "Playing TinderWall."
         gs.PendingCosts <- gs.PendingCosts + Cost TinderWall
         gs.Hand <- RemoveOneCard gs.Hand TinderWall
         gs.Battlefield <- (TinderWall, false) :: gs.Battlefield

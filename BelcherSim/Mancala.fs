@@ -17,7 +17,7 @@
 
 open System
 open System.Collections.Generic
-open System.IO
+open Logging
 
 type Board = Slot list
 and Slot = { count:int; max:int }
@@ -157,12 +157,8 @@ let MancalaSequence emptyBoard numTokens =
     let chunkSize = 4194304
     let total = ref 0
     let stopWatch = System.Diagnostics.Stopwatch.StartNew()
-    //let outFile = new StreamWriter("output-mtg3.txt")
-    let myprint (str:string) =
-        //outFile.WriteLine(str)
-        printfn "%s" str
 
-    myprint (sprintf "Started at %s" (DateTime.Now.ToString()))
+    log (sprintf "Started at %s" (DateTime.Now.ToString()))
     // #endregion
 
     seq {
@@ -181,9 +177,9 @@ let MancalaSequence emptyBoard numTokens =
                 if (!total % chunkSize) = 0 then
                     let elapsedSeconds = stopWatch.Elapsed.TotalSeconds
                     let averageSecondsPerChunk = elapsedSeconds / (float (!total / chunkSize))
-                    myprint (sprintf "%s#%9d, %5.2f sec/chunk, %8.3f total sec, %5.3f since last"
-                                     (PrettyPrintBoard newBoard) !total averageSecondsPerChunk
-                                     elapsedSeconds (elapsedSeconds - !prevElapsedSeconds))
+                    log (sprintf "%s#%9d, %5.2f sec/chunk, %8.3f total sec, %5.3f since last"
+                                 (PrettyPrintBoard newBoard) !total averageSecondsPerChunk
+                                 elapsedSeconds (elapsedSeconds - !prevElapsedSeconds))
                     prevElapsedSeconds := elapsedSeconds
                 ()  // useful breakpoint location
                 // #endregion
@@ -194,11 +190,10 @@ let MancalaSequence emptyBoard numTokens =
             | None ->
                 // #region Debug
                 stopWatch.Stop()
-                myprint (sprintf "Finished at %s" (DateTime.Now.ToString()))
-                myprint (sprintf "Final total = %d" !total)
-                myprint (sprintf "Elapsed time: %f total minutes" stopWatch.Elapsed.TotalMinutes)
-                myprint (sprintf "              %f total seconds" stopWatch.Elapsed.TotalSeconds)
-                //outFile.Close()
+                log (sprintf "Finished at %s" (DateTime.Now.ToString()))
+                log (sprintf "Final total = %d" !total)
+                log (sprintf "Elapsed time: %f total minutes" stopWatch.Elapsed.TotalMinutes)
+                log (sprintf "              %f total seconds" stopWatch.Elapsed.TotalSeconds)
                 // #endregion
                 doneIterating := true
     }

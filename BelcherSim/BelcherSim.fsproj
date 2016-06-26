@@ -48,6 +48,7 @@
     <Reference Include="System.Numerics" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Logging.fs" />
     <Compile Include="Mancala.fs" />
     <Compile Include="Cards.fs" />
     <Compile Include="Deck.fs" />
