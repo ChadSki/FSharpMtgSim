@@ -15,6 +15,7 @@ open Cards
 type ManaAmount =
     { red:int; green:int; redgreen:int; colorless:int; other:int }
 
+    // Commutative
     static member (+) (left:ManaAmount, right:ManaAmount) =
         { red       = left.red       + right.red
           green     = left.green     + right.green
@@ -22,12 +23,58 @@ type ManaAmount =
           colorless = left.colorless + right.colorless
           other     = left.other     + right.other }
 
-    static member (-) (left:ManaAmount, right:ManaAmount) =
-        { red       = left.red       - right.red
-          green     = left.green     - right.green
-          redgreen  = left.redgreen  - right.redgreen
-          colorless = left.colorless - right.colorless
-          other     = left.other     - right.other }
+    // Important: Not commutative!
+    // Rather than subtracting (spending) mana immediately, I recommend adding up
+    // what you want to spend, and keep checking whether the subtraction works out.
+    // Only commit to the subtraction as late as possible.
+    static member (-) (left:ManaAmount, right:ManaAmount) : ManaAmount option =
+
+        // Can't cast things that require `other` mana (we can use it for colorless though)
+        if not (right.other = 0) then None
+        else
+            // Start with obvious subtractions
+            let mutable red = left.red - right.red
+            let mutable green = left.green - right.green
+            let mutable colorless = left.colorless - right.colorless
+
+            // Green and red can steal from redgreen
+            let mutable redgreen = left.redgreen
+            if green < 0 then
+                redgreen <- redgreen + green
+                green <- 0
+            if red < 0 then
+                redgreen <- redgreen + red
+                red <- 0
+
+            // Colorless can steal from other.
+            let mutable other = left.other
+            if colorless < 0 then
+                other <- other + colorless
+                colorless <- 0
+
+            // Redgreen/colorless can use green or red or redgreen (used in that order).
+
+            // First add the whole mess together.
+            let mutable remaining = right.redgreen
+            if other < 0 then
+                remaining <- remaining - other
+
+            green <- green - remaining      // Try taking from green.
+            if green < 0 then
+                red <- red + green          // Try taking from red
+                green <- 0
+
+            if red < 0 then
+                redgreen <- redgreen + red  // Try taking from redgreen
+                red <- 0
+
+            // If we're in negative redgreen mana, we've run out.
+            if redgreen < 0 then None
+            else Some { red       = red
+                        green     = green
+                        redgreen  = redgreen
+                        colorless = colorless
+                        other     = other }
 
 let Magnitude (m:ManaAmount) : int =
     m.red + m.green + m.redgreen + m.colorless + m.other
