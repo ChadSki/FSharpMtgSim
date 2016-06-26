@@ -13,7 +13,8 @@ type GameState(_library: Card list,
                _battlefield: (Card * bool) list,  // Card, and whether it's tapped
                _moxen: (ManaColor * bool) list,  // Imprinted Chrome Mox colors, and whether they've been spent
                _graveyard: Card list,
-               _mana: ManaAmount) =
+               _mana: ManaAmount,
+               _stormCount: int) =
 
     member val Library = _library with get, set
     member val Hand = _hand with get, set
@@ -21,17 +22,17 @@ type GameState(_library: Card list,
     member val Moxen = _moxen with get, set
     member val Graveyard = _graveyard with get, set
     member val Mana = _mana with get, set
+    member val StormCount = _stormCount with get, set
     member this.Clone() = this.MemberwiseClone() :?> GameState
 
-// General "what should I do next" function, can be called recursively.
+// General "what should I do next" function.
 let rec TakeAction (gs:GameState) =
 
     // Play Chrome Mox if possible
     if gs.Hand |> List.exists ((=) ChromeMox) then
-
-        // Remove from hand and put in play
         gs.Hand <- RemoveFromCardGroup gs.Hand ChromeMox
         gs.Battlefield <- (ChromeMox, false) :: gs.Battlefield
+        gs.StormCount <- gs.StormCount + 1
 
         // If we imprinted a card, add its color to the list of moxen
         match ChooseImprint gs.Hand with
@@ -41,6 +42,19 @@ let rec TakeAction (gs:GameState) =
             gs.Moxen <- (Color (Cost imprint), false) :: gs.Moxen
 
         TakeAction gs
+
+    // Exile ESG to provide green mana
+    else if gs.Hand |> List.exists ((=) ElvishSpiritGuide) then
+        gs.Hand <- RemoveFromCardGroup gs.Hand ElvishSpiritGuide
+        gs.Mana <- gs.Mana + oneGreen
+        TakeAction gs
+
+    // Exile SSG to provide green mana
+    else if gs.Hand |> List.exists ((=) SimianSpiritGuide) then
+        gs.Hand <- RemoveFromCardGroup gs.Hand SimianSpiritGuide
+        gs.Mana <- gs.Mana + oneRed
+        TakeAction gs
+
     else
         false
 
@@ -68,7 +82,7 @@ let rec MulliganOrPlay (deck:Deck) (handSize:int) : bool =
             let startingMana = { red=0; green=numCott; redgreen=0; colorless=0; other=0 }
 
             // Start playing with this hand
-            TakeAction (new GameState (library, hand, [], [], [], startingMana))
+            TakeAction (new GameState (library, hand, [], [], [], startingMana, 0))
 
         else
             // Can we do the special mulligan?
