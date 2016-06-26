@@ -8,21 +8,21 @@ open Mana
 open ChromeMox
 
 // Big 'ol mutable wad of state.
-type GameState(_library: Card list,
-               _hand: Card list,
-               _battlefield: (Card * bool) list,  // Card, and whether it's tapped
-               _moxen: (ManaColor * bool) list,  // Imprinted Chrome Mox colors, and whether they've been spent
-               _graveyard: Card list,
-               _mana: ManaAmount,
-               _stormCount: int) =
+type GameState(library: Card list,
+               hand: Card list,
+               battlefield: (Card * bool) list,  // Card, and whether it's tapped
+               moxen: (ManaColor * bool) list,  // Imprinted Chrome Mox colors, and whether they've been spent
+               graveyard: Card list,
+               mana: ManaAmount,
+               stormCount: int) =
 
-    member val Library = _library with get, set
-    member val Hand = _hand with get, set
-    member val Battlefield = _battlefield with get, set
-    member val Moxen = _moxen with get, set
-    member val Graveyard = _graveyard with get, set
-    member val Mana = _mana with get, set
-    member val StormCount = _stormCount with get, set
+    member val Library = library with get, set
+    member val Hand = hand with get, set
+    member val Battlefield = battlefield with get, set
+    member val Moxen = moxen with get, set
+    member val Graveyard = graveyard with get, set
+    member val Mana = mana with get, set
+    member val StormCount = stormCount with get, set
     member this.Clone() = this.MemberwiseClone() :?> GameState
 
 // General "what should I do next" function.
