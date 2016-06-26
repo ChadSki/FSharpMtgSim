@@ -5,19 +5,17 @@ open CryptoRandom
 open Cards
 open Deck
 
-type CardGroup = Card list
-
 // Draw n cards. Return a new (smaller) library and the drawn cards.
-let Draw n (cardGroup:CardGroup) : CardGroup * CardGroup =
+let Draw n cardGroup =
     cardGroup |> Seq.skip n |> Seq.toList,
     cardGroup |> Seq.take n |> Seq.toList
 
-let RemoveFromCardGroup (cardgroup:CardGroup) (card:Card) =
+let RemoveFromCardGroup cardgroup card =
     let wanted, others = cardgroup |> List.partition ((=) card)
     List.append others (wanted |> Seq.skip 1 |> Seq.toList)
 
 // Generate a string that represents the given deck state
-let PrettyPrintCardGroup (lib:CardGroup) =
+let PrettyPrintCardGroup (lib:Card list) =
     let numToShow = 15
     let ellipse = if lib.Length > numToShow then "..." else ""
     let libraryTop =

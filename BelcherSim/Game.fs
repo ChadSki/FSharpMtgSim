@@ -7,24 +7,36 @@ open CardGroup
 open Mana
 open ChromeMox
 
-// General "what should I do next" function, can be called recursively.
-let TakeAction (battlefield:CardGroup)
-               (graveyard:CardGroup)
-               (library:CardGroup)
-               (originalHand:CardGroup)
-               (mana:ManaAmount) =
+type GameState(_library: Card list,
+               _hand: Card list,
+               _battlefield: (Card * bool) list,  // Card, and whether it's tapped
+               _moxen: (ManaColor * bool) list,  // Color, and whether it's been used
+               _graveyard: Card list,
+               _mana: ManaAmount) =
 
-    let hand = ref originalHand
+    member x.Library = ref _library
+    member x.Hand = ref _hand
+    member x.Battlefield = ref _battlefield
+    member x.Moxen = ref _moxen
+    member x.Graveyard = ref _graveyard
+    member x.Mana = ref _mana
+
+// General "what should I do next" function, can be called recursively.
+let TakeAction (gs:GameState) =
 
     // Play Chrome Mox if possible
-    if !hand |> List.exists ((=) ChromeMox) then
+    if !(gs.Hand) |> List.exists ((=) ChromeMox) then
 
-        hand := RemoveFromCardGroup !hand ChromeMox
-        match ChooseImprint !hand with
-        | None ->
-            ()
+        // Remove from hand and put in play
+        gs.Hand := RemoveFromCardGroup !(gs.Hand) ChromeMox
+        gs.Battlefield := (ChromeMox, false) :: !(gs.Battlefield)
+
+        // If we imprinted a card, add its color to the list of moxen
+        match ChooseImprint !(gs.Hand) with
+        | None -> ()
         | Some imprint ->
-            hand := RemoveFromCardGroup !hand imprint
+            gs.Hand := RemoveFromCardGroup !(gs.Hand) imprint
+            gs.Moxen := (Color (Cost imprint), false) :: !(gs.Moxen)
 
         true
     else
@@ -54,7 +66,7 @@ let rec MulliganOrPlay (deck:Deck) (handSize:int) : bool =
             let startingMana = { red=0; green=numCott; redgreen=0; colorless=0; other=0 }
 
             // Start playing with this hand
-            TakeAction [] [] library hand startingMana
+            TakeAction (new GameState (library, hand, [], [], [], startingMana))
 
         else
             // Can we do the special mulligan?
