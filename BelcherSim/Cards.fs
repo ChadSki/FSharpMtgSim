@@ -17,23 +17,33 @@ let allCards = FSharpType.GetUnionCases typeof<Card>
                |> Array.toList
 
 let CardLabel = function
-| BurningWish ->           "BWi"
-| ChancellorOfTheTangle -> "CoT"
-| ChromeMox ->             "ChM"
-| DesperateRitual ->       "DRt"
-| ElvishSpiritGuide ->     "ESG"
-| EmptyTheWarrens ->       "EtW"
-| GitaxianProbe ->         "GPr"
-| GoblinCharbelcher ->     "GCb"
-| LandGrant ->             "LGr"
-| LionsEyeDiamond ->       "LED"
-| LotusPetal ->            "LoP"
-| Manamorphose ->          "MMp"
-| PyreticRitual ->         "PyR"
-| RiteOfFlame ->           "RoF"
-| SeethingSong ->          "SSo"
-| SerumPowder ->           "SrP"
-| SimianSpiritGuide ->     "SSG"
-| StreetWraith ->          "SWr"
-| Taiga ->                 "Tai"
-| TinderWall ->            "TiW"
+    | BurningWish ->           "BWi"
+    | ChancellorOfTheTangle -> "CoT"
+    | ChromeMox ->             "ChM"
+    | DesperateRitual ->       "DRt"
+    | ElvishSpiritGuide ->     "ESG"
+    | EmptyTheWarrens ->       "EtW"
+    | GitaxianProbe ->         "GPr"
+    | GoblinCharbelcher ->     "GCb"
+    | LandGrant ->             "LGr"
+    | LionsEyeDiamond ->       "LED"
+    | LotusPetal ->            "LoP"
+    | Manamorphose ->          "MMp"
+    | PyreticRitual ->         "PyR"
+    | RiteOfFlame ->           "RoF"
+    | SeethingSong ->          "SSo"
+    | SerumPowder ->           "SrP"
+    | SimianSpiritGuide ->     "SSG"
+    | StreetWraith ->          "SWr"
+    | Taiga ->                 "Tai"
+    | TinderWall ->            "TiW"
+
+let IsWinCondition = function
+    | BurningWish | EmptyTheWarrens | GoblinCharbelcher
+      -> true
+    | ChancellorOfTheTangle | ChromeMox         | DesperateRitual | ElvishSpiritGuide
+    | GitaxianProbe         | LandGrant         | LionsEyeDiamond | LotusPetal
+    | Manamorphose          | PyreticRitual     | RiteOfFlame     | SeethingSong
+    | SerumPowder           | SimianSpiritGuide | StreetWraith    | Taiga
+    | TinderWall
+      -> false

@@ -1,14 +1,23 @@
-﻿module Library
+﻿module CardGroup
 
 open System
 open CryptoRandom
 open Cards
 open Deck
 
-type Library = Card list
+type CardGroup = Card list
+
+// Draw n cards. Return a new (smaller) library and the drawn cards.
+let Draw n (cardGroup:CardGroup) : CardGroup * CardGroup =
+    cardGroup |> Seq.skip n |> Seq.toList,
+    cardGroup |> Seq.take n |> Seq.toList
+
+let RemoveFromCardGroup (cardgroup:CardGroup) (card:Card) =
+    let wanted, others = cardgroup |> List.partition ((=) card)
+    List.append others (wanted |> Seq.skip 1 |> Seq.toList)
 
 // Generate a string that represents the given deck state
-let PrettyPrintLibrary (lib:Library) =
+let PrettyPrintCardGroup (lib:CardGroup) =
     let numToShow = 15
     let ellipse = if lib.Length > numToShow then "..." else ""
     let libraryTop =
@@ -21,7 +30,7 @@ let PrettyPrintLibrary (lib:Library) =
 let rng = new CryptoRandom()
 
 // Return a new, shuffled list. Fisher-Yates algorithm.
-let Shuffle (original:Library) : Library =
+let Shuffle original =
     let deck = List.toArray original
     let n = ref deck.Length
 
@@ -38,7 +47,7 @@ let Shuffle (original:Library) : Library =
     Array.toList deck
 
 // Take a deck definition and actually instatiate that many cards
-let AsLibrary deck =
+let AsCardGroup deck =
     deck |> List.map (fun (card, num) -> [for i in 1..num -> card])
          |> List.concat
          |> Shuffle

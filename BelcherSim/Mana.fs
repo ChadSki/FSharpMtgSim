@@ -2,58 +2,82 @@
 
 open Cards
 
-// Represents a quantity of mana
+// Represents a quantity of mana.
+//
+// Rather than represent every kind of mana possible in MtG, this
+// code focuses on mana encountered while playing Belcher.
+//
+// `redgreen` mana gets its own type, for Manamorphose.
+//
+// `other` mana is colored mana that we don't use. It's important to
+// distinguish from colorless, because Chrome Mox needs a colored
+// card to imprint.
 type ManaAmount =
-    { red:int; green:int; colorless:int }
+    { red:int; green:int; redgreen:int; colorless:int; other:int }
 
     static member (+) (left:ManaAmount, right:ManaAmount) =
         { red       = left.red       + right.red
           green     = left.green     + right.green
-          colorless = left.colorless + right.colorless }
+          redgreen  = left.redgreen  + right.redgreen
+          colorless = left.colorless + right.colorless
+          other     = left.other     + right.other }
 
     static member (-) (left:ManaAmount, right:ManaAmount) =
         { red       = left.red       - right.red
           green     = left.green     - right.green
-          colorless = left.colorless - right.colorless }
+          redgreen  = left.redgreen  - right.redgreen
+          colorless = left.colorless - right.colorless
+          other     = left.other     - right.other }
 
-let noMana = { red=0; green=0; colorless=0 }
+let Magnitude (m:ManaAmount) : int =
+    m.red + m.green + m.redgreen + m.colorless + m.other
+
+let noMana = { red=0; green=0; redgreen=0; colorless=0; other=0 }
 
 let Cost = function
-| BurningWish ->           { red=1; green=0; colorless=1 }
-| ChancellorOfTheTangle -> { red=0; green=3; colorless=4 }
-| ChromeMox ->             noMana
-| DesperateRitual ->       { red=1; green=0; colorless=1 }
-| ElvishSpiritGuide ->     { red=0; green=1; colorless=2 }
-| EmptyTheWarrens ->       { red=1; green=0; colorless=3 }
-| GitaxianProbe ->         { red=0; green=0; colorless=99 } // Not to be played normally
-| GoblinCharbelcher ->     { red=0; green=0; colorless=4 }
-| LandGrant ->             { red=0; green=1; colorless=1 }
-| LionsEyeDiamond ->       noMana
-| LotusPetal ->            noMana
-| Manamorphose ->          { red=0; green=0; colorless=2 }  // R/G mana makes this effectively colorless
-| PyreticRitual ->         { red=1; green=0; colorless=1 }
-| RiteOfFlame ->           { red=1; green=0; colorless=0 }
-| SeethingSong ->          { red=1; green=0; colorless=2 }
-| SerumPowder ->           { red=0; green=0; colorless=3 }
-| SimianSpiritGuide ->     { red=1; green=0; colorless=2 }
-| StreetWraith ->          { red=0; green=0; colorless=99 } // Not to be played normally
-| Taiga ->                 noMana
-| TinderWall ->            { red=0; green=1; colorless=0 }
+    | BurningWish ->           { red=1; green=0; redgreen=0; colorless=1; other=0 }
+    | ChancellorOfTheTangle -> { red=0; green=3; redgreen=0; colorless=4; other=0 }
+    | ChromeMox ->             noMana
+    | DesperateRitual ->       { red=1; green=0; redgreen=0; colorless=1; other=0 }
+    | ElvishSpiritGuide ->     { red=0; green=1; redgreen=0; colorless=2; other=0 }
+    | EmptyTheWarrens ->       { red=1; green=0; redgreen=0; colorless=3; other=0 }
+    | GitaxianProbe ->         { red=0; green=0; redgreen=0; colorless=1; other=1 }
+    | GoblinCharbelcher ->     { red=0; green=0; redgreen=0; colorless=4; other=0 }
+    | LandGrant ->             { red=0; green=1; redgreen=0; colorless=1; other=0 }
+    | LionsEyeDiamond ->       noMana
+    | LotusPetal ->            noMana
+    | Manamorphose ->          { red=0; green=0; redgreen=2; colorless=0; other=0 }
+    | PyreticRitual ->         { red=1; green=0; redgreen=0; colorless=1; other=0 }
+    | RiteOfFlame ->           { red=1; green=0; redgreen=0; colorless=0; other=0 }
+    | SeethingSong ->          { red=1; green=0; redgreen=0; colorless=2; other=0 }
+    | SerumPowder ->           { red=0; green=0; redgreen=0; colorless=3; other=0 }
+    | SimianSpiritGuide ->     { red=1; green=0; redgreen=0; colorless=2; other=0 }
+    | StreetWraith ->          { red=0; green=0; redgreen=0; colorless=3; other=2 }
+    | Taiga ->                 noMana
+    | TinderWall ->            { red=0; green=1; redgreen=0; colorless=0; other=0 }
 
 type ManaColor =
      | Red
      | Green
+     | RedGreen
      | Colorless
-     | Multicolor
+     | Other
 
 let Color = function
-| Manamorphose -> Multicolor  // Special-cased because we counted the R/G mana as effectively colorless
-| card -> let manaCost = Cost card
-          match manaCost.red > 0 with
-          | true -> match manaCost.green > 0 with
-                    | true -> Multicolor
-                    | false -> Red
+    | { red=r; green=g; redgreen=rg; colorless=_; other=_ }
+      when (r > 0 && g > 0) || rg > 0
+        -> RedGreen
 
-          | false -> match manaCost.green > 0 with
-                     | true -> Green
-                     | false -> Colorless
+    | { red=r; green=_; redgreen=_; colorless=_; other=_ }
+      when r > 0
+        -> Red
+
+    | { red=_; green=g; redgreen=_; colorless=_; other=_ }
+      when g > 0
+        -> Green
+
+    | { red=_; green=g; redgreen=_; colorless=_; other=o }
+      when o > 0
+        -> Other
+
+    | _ -> Colorless

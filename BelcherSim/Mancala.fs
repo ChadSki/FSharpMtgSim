@@ -157,9 +157,9 @@ let MancalaSequence emptyBoard numTokens =
     let chunkSize = 4194304
     let total = ref 0
     let stopWatch = System.Diagnostics.Stopwatch.StartNew()
-    let outFile = new StreamWriter("output-mtg2.txt")
+    //let outFile = new StreamWriter("output-mtg3.txt")
     let myprint (str:string) =
-        outFile.WriteLine(str)
+        //outFile.WriteLine(str)
         printfn "%s" str
 
     myprint (sprintf "Started at %s" (DateTime.Now.ToString()))
@@ -198,7 +198,7 @@ let MancalaSequence emptyBoard numTokens =
                 myprint (sprintf "Final total = %d" !total)
                 myprint (sprintf "Elapsed time: %f total minutes" stopWatch.Elapsed.TotalMinutes)
                 myprint (sprintf "              %f total seconds" stopWatch.Elapsed.TotalSeconds)
-                outFile.Close()
+                //outFile.Close()
                 // #endregion
                 doneIterating := true
     }

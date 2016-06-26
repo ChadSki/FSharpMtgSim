@@ -51,8 +51,9 @@
     <Compile Include="Mancala.fs" />
     <Compile Include="Cards.fs" />
     <Compile Include="Deck.fs" />
-    <Compile Include="Library.fs" />
+    <Compile Include="CardGroup.fs" />
     <Compile Include="Mana.fs" />
+    <Compile Include="ChromeMox.fs" />
     <Compile Include="Game.fs" />
     <Compile Include="Simulation.fs" />
     <None Include="App.config" />

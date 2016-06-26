@@ -5,13 +5,12 @@ open Microsoft.FSharp.Collections
 open Mancala
 open Cards
 open Deck
-open Library
 open Game
 
 // individual deck score
 let SimScore deck =
     printfn "%s" (PrettyPrintDeck deck)
-    if AttemptWin deck 7
+    if AttemptWin deck
     then 1.0
     else 0.0
 
