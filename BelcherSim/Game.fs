@@ -53,37 +53,32 @@ let rec TakeAction (gs:GameState) : bool =
         // Try each possibility in turn. Stop if a possibility wins the game.
         // `List.exists` will short-circuit if a win is discovered.
         possibleImprints
-        |> List.exists (function
-            | None ->
-                log "Entering hypothetical: nothing was imprinted."
-                if TakeAction (gs.Clone()) then
-                    log "Hypothetical succeeded!"
-                    true
-                else
-                    log "Returning from failed hypothetical."
-                    false
-
+        |> List.exists (fun maybeImprint ->
+            let gs2 = gs.Clone()
+            match maybeImprint with
+            | None -> log "Entering hypothetical: nothing was imprinted."
             | Some imprint ->
                 let imprintColor = Color (Cost imprint)
                 log (sprintf "Entering hypothetical: imprinting %s." (CardLabel imprint))
-                log (sprintf "Tapping ChromeMox for %s mana." (ColorLabel imprintColor))
-                let gs2 = gs.Clone()
+                log (sprintf "Tapping ChromeMox for 1 %s mana." (ColorLabel imprintColor))
                 gs2.Hand <- RemoveOneCard gs.Hand imprint
                 gs2.Mana <- gs2.Mana + OneMana imprintColor
                 gs2.Battlefield <- imprint :: gs2.Battlefield
-                if TakeAction gs2 then
-                    log "Hypothetical succeeded!"
-                    true
-                else
-                    log "Returning from failed hypothetical."
-                    false)
+
+            // This if-statement breaks tail-recursion, but probably helps with debugging.
+            if TakeAction gs2 then
+                log "Hypothetical succeeded!"
+                true
+            else
+                log "Returning from failed hypothetical."
+                false)
 
     // Next play all the free cards that allow us to draw.
 
     // Paying the life cost, GitaxianProbe is effectively free.
     // Draw a card and put GitaxianProbe in the graveyard.
     else if gs.Hand |> HasCard GitaxianProbe then
-        log "Playing GitaxianProbe"
+        log "Playing GitaxianProbe."
         let newHand = RemoveOneCard gs.Hand GitaxianProbe
         let newLibrary, drawn = Draw 1 gs.Library
         gs.Hand <- List.append newHand drawn
@@ -124,21 +119,21 @@ let rec TakeAction (gs:GameState) : bool =
 
     // Exile ElvishSpiritGuide to provide green mana.
     else if gs.Hand |> HasCard ElvishSpiritGuide then
-        log "Playing ElvishSpiritGuide."
+        log "Exiling ElvishSpiritGuide for 1 green mana."
         gs.Hand <- RemoveOneCard gs.Hand ElvishSpiritGuide
         gs.Mana <- gs.Mana + OneMana Green
         TakeAction gs
 
     // Exile SimianSpiritGuide to provide green mana.
     else if gs.Hand |> HasCard SimianSpiritGuide then
-        log "Playing SimianSpiritGuide."
+        log "Exiling SimianSpiritGuide for 1 red mana."
         gs.Hand <- RemoveOneCard gs.Hand SimianSpiritGuide
         gs.Mana <- gs.Mana + OneMana Red
         TakeAction gs
 
     // Play our land for the turn, immediately tapping for redgreen mana.
     else if not gs.PlayedLand && gs.Hand |> HasCard Taiga then
-        log "Playing Taiga."
+        log "Playing and tapping Taiga for 1 redgreen mana."
         gs.Hand <- RemoveOneCard gs.Hand Taiga
         gs.Battlefield <- Taiga :: gs.Battlefield
         gs.Mana <- gs.Mana + OneMana RedGreen
@@ -150,7 +145,7 @@ let rec TakeAction (gs:GameState) : bool =
     // Manamorphose first since it allows us to draw and makes redgreen mana.
     else if (gs.Hand |> HasCard Manamorphose &&
              CanPay (gs.PendingCosts + Cost Manamorphose) gs.Mana) then
-        log "Playing Manamorphose."
+        log "Playing Manamorphose, no net mana gain (but redgreen is more useful)."
         let newHand = RemoveOneCard gs.Hand Manamorphose
         let newLibrary, drawn = Draw 1 gs.Library
         gs.Hand <-  List.append newHand drawn
@@ -174,7 +169,7 @@ let rec TakeAction (gs:GameState) : bool =
     // RiteOfFlame is the cheapest red mana source.
     else if (gs.Hand |> HasCard RiteOfFlame &&
              CanPay (gs.PendingCosts + Cost RiteOfFlame) gs.Mana) then
-        log "Playing RiteOfFlame."
+
         gs.Hand <- RemoveOneCard gs.Hand RiteOfFlame
         gs.PendingCosts <- gs.PendingCosts + Cost RiteOfFlame
 
@@ -185,6 +180,8 @@ let rec TakeAction (gs:GameState) : bool =
                             | _ -> noMana)
                         |> List.reduce (+)
 
+        log (sprintf "Playing RiteOfFlame for a net gain of 1+%d red mana." bonusMana.red)
+        gs.Mana <- gs.Mana + OneMana Red + bonusMana
         gs.Graveyard <- RiteOfFlame :: gs.Graveyard
         gs.StormCount <- gs.StormCount + 1
         TakeAction gs
@@ -192,7 +189,7 @@ let rec TakeAction (gs:GameState) : bool =
     // Relatively cheap mana source, dead simple.
     else if (gs.Hand |> HasCard PyreticRitual &&
              CanPay (gs.PendingCosts + Cost PyreticRitual) gs.Mana) then
-        log "Playing PyreticRitual."
+        log "Playing PyreticRitual for a net gain of 1 red mana."
         gs.Hand <- RemoveOneCard gs.Hand PyreticRitual
         gs.PendingCosts <- gs.PendingCosts + Cost PyreticRitual
         gs.Mana <- gs.Mana + threeRedMana
@@ -203,7 +200,7 @@ let rec TakeAction (gs:GameState) : bool =
     // Large and simple mana source.
     else if (gs.Hand |> HasCard SeethingSong &&
              CanPay (gs.PendingCosts + Cost SeethingSong) gs.Mana) then
-        log "Playing SeethingSong."
+        log "Playing SeethingSong for a net gain of 2 red mana."
         gs.Hand <- RemoveOneCard gs.Hand SeethingSong
         gs.PendingCosts <- gs.PendingCosts + Cost SeethingSong
         gs.Mana <- gs.Mana + fiveRedMana
@@ -211,13 +208,44 @@ let rec TakeAction (gs:GameState) : bool =
         gs.StormCount <- gs.StormCount + 1
         TakeAction gs
 
-    // Pop some mana!
+    else if (gs.Hand |> HasCard DesperateRitual &&
+             CanPay (gs.PendingCosts + Cost DesperateRitual) gs.Mana) then
+        log "Playing DesperateRitual for a net gain of 1 red mana."
+        gs.Hand <- RemoveOneCard gs.Hand DesperateRitual
+        gs.PendingCosts <- gs.PendingCosts + Cost DesperateRitual
 
-    // Has card doesn't work... but I don't really need to keep track of tappedness do I?
+        // If there are other DesperateRituals in our hand, they can be
+        // grafted onto this one.
+        let mutable successfulGrafts = 0
+        for desperateRitual in gs.Hand |> List.filter ((=) DesperateRitual) do
+            if CanPay (gs.PendingCosts + Cost DesperateRitual) gs.Mana then
+                gs.PendingCosts <- gs.PendingCosts + Cost DesperateRitual
+                successfulGrafts <- successfulGrafts + 1
+
+        log (sprintf "Grafted %d extra DesperateRitual for %d bonus red mana."
+                     successfulGrafts (successfulGrafts * 3))
+
+        // For each graft, add mana.
+        while successfulGrafts > 0 do
+            gs.Mana <- gs.Mana + threeRedMana
+
+        // Lastly for the host card itself.
+        gs.Mana <- gs.Mana + threeRedMana
+
+        TakeAction gs
+
+    // Pop mana sources already in play.
+
     else if gs.Battlefield |> HasCard TinderWall then
         log "Popping TinderWall for 2 red mana."
         gs.Battlefield <- RemoveOneCard gs.Battlefield TinderWall
         gs.Mana <- gs.Mana + twoRedMana
+        TakeAction gs
+
+    else if gs.Battlefield |> HasCard LotusPetal then
+        log "Popping LotusPetal for 1 redgreen mana."
+        gs.Battlefield <- RemoveOneCard gs.Battlefield LotusPetal
+        gs.Mana <- gs.Mana + OneMana RedGreen
         TakeAction gs
 
     else

@@ -121,8 +121,8 @@ let OneMana = function
     | Colorless -> { red=0; green=0; redgreen=0; colorless=1; other=0 }
     | Other -> { red=0; green=0; redgreen=0; colorless=0; other=1 }
 
-let twoRedMana = (OneMana Red) + (OneMana Red)
-let threeRedMana = twoRedMana + (OneMana Red)
+let twoRedMana = OneMana Red + OneMana Red
+let threeRedMana = twoRedMana + OneMana Red
 let fiveRedMana = twoRedMana + threeRedMana
 
 let Cost = function
