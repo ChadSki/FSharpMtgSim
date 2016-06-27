@@ -63,7 +63,6 @@ let rec TakeAction (gs:GameState) : bool =
                 log (sprintf "Tapping ChromeMox for 1 %s mana." (ColorLabel imprintColor))
                 gs2.Hand <- RemoveOneCard gs.Hand imprint
                 gs2.Mana <- gs2.Mana + OneMana imprintColor
-                gs2.Battlefield <- imprint :: gs2.Battlefield
 
             // This if-statement breaks tail-recursion, but probably helps with debugging.
             if TakeAction gs2 then
