@@ -71,27 +71,49 @@ let rec TakeAction (gs:GameState) : bool =
                 else
                     log "Returning from failed hypothetical."
                     false)
+
+    // Paying the life cost, GitaxianProbe is effectively free.
+    // Draw a card and put GitaxianProbe in the graveyard.
+    else if gs.Hand |> HasCard GitaxianProbe then
+        log "Playing GitaxianProbe"
+        let newHand = RemoveOneCard gs.Hand GitaxianProbe
+        let newLibrary, drawn = Draw 1 gs.Library
+        gs.Hand <- List.append newHand drawn
+        gs.Library <- newLibrary
+        gs.Graveyard <- GitaxianProbe :: gs.Graveyard
+        gs.StormCount <- gs.StormCount + 1
+        TakeAction gs
+
+    // Paying the life cost, StreetWraith is effectively free.
+    // Draw a card and put StreetWraith in the graveyard.
+    else if gs.Hand |> HasCard StreetWraith then
+        log "Playing StreetWraith."
+        let newHand = RemoveOneCard gs.Hand StreetWraith
+        let newLibrary, drawn = Draw 1 gs.Library
+        gs.Hand <-  List.append newHand drawn
+        gs.Library <- newLibrary
+        gs.Graveyard <- StreetWraith :: gs.Graveyard
+        gs.StormCount <- gs.StormCount + 1
+        TakeAction gs
+
+    // Cast Manamorphose if we can.
+    else if (gs.Hand |> HasCard Manamorphose &&
+             CanPay (gs.PendingCosts + Cost Manamorphose) gs.Mana) then
+        log "Playing Manamorphose."
+        let newHand = RemoveOneCard gs.Hand Manamorphose
+        let newLibrary, drawn = Draw 1 gs.Library
+        gs.Hand <-  List.append newHand drawn
+        gs.Library <- newLibrary
+        gs.Graveyard <- Manamorphose :: gs.Graveyard
+        gs.StormCount <- gs.StormCount + 1
+
+        // TODO: Does this PendingCosts business check out,
+        // or does it allow fishy business?
+        gs.PendingCosts <- gs.PendingCosts + Cost Manamorphose
+        gs.Mana <- gs.Mana + oneRedGreen + oneRedGreen
+        TakeAction gs
+
     else
-        // Paying the life cost, GitaxianProbe is effectively free.
-        // Draw a card and put GitaxianProbe in the graveyard.
-        while gs.Hand |> HasCard GitaxianProbe do
-            log "Playing GitaxianProbe"
-            let newHand = RemoveOneCard gs.Hand GitaxianProbe
-            let newLibrary, drawn = Draw 1 gs.Library
-            gs.Hand <- List.append newHand drawn
-            gs.Library <- newLibrary
-            gs.Graveyard <- GitaxianProbe :: gs.Graveyard
-
-        // Paying the life cost, StreetWraith is effectively free.
-        // Draw a card and put StreetWraith in the graveyard.
-        while gs.Hand |> HasCard StreetWraith do
-            log "Playing StreetWrait.h"
-            let newHand = RemoveOneCard gs.Hand StreetWraith
-            let newLibrary, drawn = Draw 1 gs.Library
-            gs.Hand <-  List.append newHand drawn
-            gs.Library <- newLibrary
-            gs.Graveyard <- StreetWraith :: gs.Graveyard
-
         // Cast LED now and increase the storm count. We can use it for mana later.
         while gs.Hand |> HasCard LionsEyeDiamond do
             log "Playing LionsEyeDiamond."
@@ -111,28 +133,14 @@ let rec TakeAction (gs:GameState) : bool =
             gs.Hand <- RemoveOneCard gs.Hand SimianSpiritGuide
             gs.Mana <- gs.Mana + oneRed
 
-        // Cast all Manamorphose we can.
-        while (gs.Hand |> HasCard Manamorphose &&
-               CanPlay Manamorphose gs.PendingCosts gs.Mana) do
-            log "Playing Manamorphose."
-            let newHand = RemoveOneCard gs.Hand Manamorphose
-            let newLibrary, drawn = Draw 1 gs.Library
-            gs.Hand <-  List.append newHand drawn
-            gs.Library <- newLibrary
-            gs.Graveyard <- Manamorphose :: gs.Graveyard
-
-            // TODO: Does this PendingCosts business check out,
-            // or does it allow fishy business?
-            gs.PendingCosts <- gs.PendingCosts + Cost Manamorphose
-            gs.Mana <- gs.Mana + oneRedGreen + oneRedGreen
-
         // Cast all TinderWalls we can.
         while (gs.Hand |> HasCard TinderWall &&
-               CanPlay TinderWall gs.PendingCosts gs.Mana) do
+               CanPay (gs.PendingCosts + Cost TinderWall) gs.Mana) do
             log "Playing TinderWall."
             gs.PendingCosts <- gs.PendingCosts + Cost TinderWall
             gs.Hand <- RemoveOneCard gs.Hand TinderWall
             gs.Battlefield <- (TinderWall, false) :: gs.Battlefield
+            gs.StormCount <- gs.StormCount + 1
 
         false
 

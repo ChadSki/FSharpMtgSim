@@ -107,8 +107,8 @@ let Cost = function
     | TinderWall ->            { red=0; green=1; redgreen=0; colorless=0; other=0 }
 
 
-let CanPlay card pendingCosts manaPool =
-    match manaPool - (pendingCosts + Cost card) with
+let CanPay (pendingCosts:ManaAmount) manaPool =
+    match manaPool - pendingCosts with
     | None -> false
     | Some _ -> true
 
