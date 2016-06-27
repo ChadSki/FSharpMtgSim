@@ -109,11 +109,12 @@ let rec TakeAction (gs:GameState) : bool =
         gs.StormCount <- gs.StormCount + 1
         TakeAction gs
 
-    // Cast LotusPetal now and increase the storm count. We can use it for mana later.
+    // Cast LotusPetal now and immediately pop for redgreen mana.
     else if gs.Hand |> HasCard LotusPetal then
-        log "Playing LotusPetal."
+        log "Playing LotusPetal and popping for 1 redgreen mana."
         gs.Hand <- RemoveOneCard gs.Hand LotusPetal
-        gs.Battlefield <- LotusPetal :: gs.Battlefield
+        gs.Mana <- gs.Mana + OneMana RedGreen
+        gs.Graveyard <- LotusPetal :: gs.Graveyard
         gs.StormCount <- gs.StormCount + 1
         TakeAction gs
 
@@ -159,10 +160,11 @@ let rec TakeAction (gs:GameState) : bool =
     // TinderWall next because it costs scarcer green mana.
     else if (gs.Hand |> HasCard TinderWall &&
              CanPay (gs.PendingCosts + Cost TinderWall) gs.Mana) then
-        log "Playing TinderWall."
+        log "Playing TinderWall and popping for 2 red mana."
         gs.Hand <- RemoveOneCard gs.Hand TinderWall
         gs.PendingCosts <- gs.PendingCosts + Cost TinderWall
-        gs.Battlefield <- TinderWall :: gs.Battlefield
+        gs.Mana <- gs.Mana + twoRedMana
+        gs.Graveyard <- TinderWall :: gs.Graveyard
         gs.StormCount <- gs.StormCount + 1
         TakeAction gs
 
@@ -174,11 +176,12 @@ let rec TakeAction (gs:GameState) : bool =
         gs.PendingCosts <- gs.PendingCosts + Cost RiteOfFlame
 
         // Bonus red mana for each copy of this card in the graveyard.
-        let bonusMana = gs.Graveyard
-                        |> List.map (function
-                            | RiteOfFlame -> OneMana Red
-                            | _ -> noMana)
-                        |> List.reduce (+)
+        let bonusMana =
+            noMana :: (gs.Graveyard
+                       |> List.map (function
+                           | RiteOfFlame -> OneMana Red
+                           | _ -> noMana))
+            |> List.reduce (+)
 
         log (sprintf "Playing RiteOfFlame for a net gain of 1+%d red mana." bonusMana.red)
         gs.Mana <- gs.Mana + OneMana Red + bonusMana
@@ -208,6 +211,8 @@ let rec TakeAction (gs:GameState) : bool =
         gs.StormCount <- gs.StormCount + 1
         TakeAction gs
 
+    // This works best if we have as much mana as possible, so it's the
+    // last used mana source.
     else if (gs.Hand |> HasCard DesperateRitual &&
              CanPay (gs.PendingCosts + Cost DesperateRitual) gs.Mana) then
         log "Playing DesperateRitual for a net gain of 1 red mana."
@@ -225,27 +230,9 @@ let rec TakeAction (gs:GameState) : bool =
         log (sprintf "Grafted %d extra DesperateRitual for %d bonus red mana."
                      successfulGrafts (successfulGrafts * 3))
 
-        // For each graft, add mana.
         while successfulGrafts > 0 do
-            gs.Mana <- gs.Mana + threeRedMana
-
-        // Lastly for the host card itself.
-        gs.Mana <- gs.Mana + threeRedMana
-
-        TakeAction gs
-
-    // Pop mana sources already in play.
-
-    else if gs.Battlefield |> HasCard TinderWall then
-        log "Popping TinderWall for 2 red mana."
-        gs.Battlefield <- RemoveOneCard gs.Battlefield TinderWall
-        gs.Mana <- gs.Mana + twoRedMana
-        TakeAction gs
-
-    else if gs.Battlefield |> HasCard LotusPetal then
-        log "Popping LotusPetal for 1 redgreen mana."
-        gs.Battlefield <- RemoveOneCard gs.Battlefield LotusPetal
-        gs.Mana <- gs.Mana + OneMana RedGreen
+            gs.Mana <- gs.Mana + threeRedMana  // Bonus mana for each graft.
+        gs.Mana <- gs.Mana + threeRedMana      // Mana for the host card itself.
         TakeAction gs
 
     else
