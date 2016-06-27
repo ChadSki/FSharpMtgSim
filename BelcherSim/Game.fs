@@ -254,6 +254,23 @@ let rec TakeAction (gs:GameState) : bool =
             while successfulGrafts > 0 do
                 gs.Mana <- gs.Mana + threeRedMana  // Bonus mana for each graft.
 
+        gs.Graveyard <- DesperateRitual :: gs.Graveyard
+        gs.StormCount <- gs.StormCount + 1
+        TakeAction gs
+
+    // Here come the win conditions, baby!
+
+    else if gs.Hand |> HasCard GoblinCharbelcher && CanPay (Cost GoblinCharbelcher) gs.Mana then
+        log "Playing GoblinCharbelcher."
+        gs.Hand <- RemoveOneCard gs.Hand GoblinCharbelcher
+
+        // Pay the casting cost.
+        match gs.Mana - Cost GoblinCharbelcher with
+        | None -> raise (new InvalidOperationException "We already asserted that we can pay for GoblinCharbelcher.")
+        | Some result ->
+            gs.Mana <- result
+
+
         TakeAction gs
 
     else
