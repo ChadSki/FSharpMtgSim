@@ -13,7 +13,6 @@ type GameState(library: Card list,
                battlefield: Card list,  // Cards in play
                graveyard: Card list,
                mana: ManaAmount,
-               pendingCosts: ManaAmount,
                stormCount: int,
                playedLand: bool) =
 
@@ -22,7 +21,6 @@ type GameState(library: Card list,
     member val Battlefield = battlefield with get, set
     member val Graveyard = graveyard with get, set
     member val Mana = mana with get, set
-    member val PendingCosts = pendingCosts with get, set
     member val StormCount = stormCount with get, set
     member val PlayedLand = playedLand with get, set
     member this.Clone() = this.MemberwiseClone() :?> GameState
@@ -143,36 +141,40 @@ let rec TakeAction (gs:GameState) : bool =
     // Now play our mana-gain cards.
 
     // Manamorphose first since it allows us to draw and makes redgreen mana.
-    else if (gs.Hand |> HasCard Manamorphose &&
-             CanPay (gs.PendingCosts + Cost Manamorphose) gs.Mana) then
+    else if gs.Hand |> HasCard Manamorphose && CanPay (Cost Manamorphose) gs.Mana then
         log "Playing Manamorphose, no net mana gain (but redgreen is more useful)."
         let newHand = RemoveOneCard gs.Hand Manamorphose
         let newLibrary, drawn = Draw 1 gs.Library
         gs.Hand <-  List.append newHand drawn
         gs.Library <- newLibrary
-        gs.PendingCosts <- gs.PendingCosts + Cost Manamorphose  // TODO: Does this PendingCosts business check out,
-        gs.Mana <- gs.Mana + (OneMana RedGreen) + (OneMana RedGreen)  // or does it allow fishy business?
+
+        // Pay first, then reap the bounty.
+        match gs.Mana - Cost Manamorphose with
+        | None -> raise (new InvalidOperationException "We already asserted that we can pay for Manamorphose.")
+        | Some result ->
+            gs.Mana <- result + OneMana RedGreen + OneMana RedGreen
+
         gs.Graveyard <- Manamorphose :: gs.Graveyard
         gs.StormCount <- gs.StormCount + 1
         TakeAction gs
 
     // TinderWall next because it costs scarcer green mana.
-    else if (gs.Hand |> HasCard TinderWall &&
-             CanPay (gs.PendingCosts + Cost TinderWall) gs.Mana) then
+    else if gs.Hand |> HasCard TinderWall && CanPay (Cost TinderWall) gs.Mana then
         log "Playing TinderWall and popping for 2 red mana."
         gs.Hand <- RemoveOneCard gs.Hand TinderWall
-        gs.PendingCosts <- gs.PendingCosts + Cost TinderWall
-        gs.Mana <- gs.Mana + twoRedMana
+
+        // Pay first, then reap the bounty.
+        match gs.Mana - Cost TinderWall with
+        | None -> raise (new InvalidOperationException "We already asserted that we can pay for TinderWall.")
+        | Some result ->
+            gs.Mana <- result + twoRedMana
+
         gs.Graveyard <- TinderWall :: gs.Graveyard
         gs.StormCount <- gs.StormCount + 1
         TakeAction gs
 
     // RiteOfFlame is the cheapest red mana source.
-    else if (gs.Hand |> HasCard RiteOfFlame &&
-             CanPay (gs.PendingCosts + Cost RiteOfFlame) gs.Mana) then
-
-        gs.Hand <- RemoveOneCard gs.Hand RiteOfFlame
-        gs.PendingCosts <- gs.PendingCosts + Cost RiteOfFlame
+    else if gs.Hand |> HasCard RiteOfFlame && CanPay (Cost RiteOfFlame) gs.Mana then
 
         // Bonus red mana for each copy of this card in the graveyard.
         let bonusMana =
@@ -183,55 +185,75 @@ let rec TakeAction (gs:GameState) : bool =
             |> List.reduce (+)
 
         log (sprintf "Playing RiteOfFlame for a net gain of 1+%d red mana." bonusMana.red)
-        gs.Mana <- gs.Mana + OneMana Red + bonusMana
+        gs.Hand <- RemoveOneCard gs.Hand RiteOfFlame
+
+        // Pay first, then reap the bounty.
+        match gs.Mana - Cost RiteOfFlame with
+        | None -> raise (new InvalidOperationException "We already asserted that we can pay for RiteOfFlame.")
+        | Some result ->
+            gs.Mana <- result + OneMana Red + bonusMana
+
         gs.Graveyard <- RiteOfFlame :: gs.Graveyard
         gs.StormCount <- gs.StormCount + 1
         TakeAction gs
 
     // Relatively cheap mana source, dead simple.
-    else if (gs.Hand |> HasCard PyreticRitual &&
-             CanPay (gs.PendingCosts + Cost PyreticRitual) gs.Mana) then
+    else if gs.Hand |> HasCard PyreticRitual && CanPay (Cost PyreticRitual) gs.Mana then
         log "Playing PyreticRitual for a net gain of 1 red mana."
         gs.Hand <- RemoveOneCard gs.Hand PyreticRitual
-        gs.PendingCosts <- gs.PendingCosts + Cost PyreticRitual
-        gs.Mana <- gs.Mana + threeRedMana
+
+        // Pay first, then reap the bounty.
+        match gs.Mana - Cost PyreticRitual with
+        | None -> raise (new InvalidOperationException "We already asserted that we can pay for PyreticRitual.")
+        | Some result ->
+            gs.Mana <- result + threeRedMana
+
         gs.Graveyard <- PyreticRitual :: gs.Graveyard
         gs.StormCount <- gs.StormCount + 1
         TakeAction gs
 
     // Large and simple mana source.
-    else if (gs.Hand |> HasCard SeethingSong &&
-             CanPay (gs.PendingCosts + Cost SeethingSong) gs.Mana) then
+    else if gs.Hand |> HasCard SeethingSong && CanPay (Cost SeethingSong) gs.Mana then
         log "Playing SeethingSong for a net gain of 2 red mana."
         gs.Hand <- RemoveOneCard gs.Hand SeethingSong
-        gs.PendingCosts <- gs.PendingCosts + Cost SeethingSong
-        gs.Mana <- gs.Mana + fiveRedMana
+
+        // Pay first, then reap the bounty.
+        match gs.Mana - Cost SeethingSong with
+        | None -> raise (new InvalidOperationException "We already asserted that we can pay for SeethingSong.")
+        | Some result ->
+            gs.Mana <- result + fiveRedMana
+
         gs.Graveyard <- SeethingSong :: gs.Graveyard
         gs.StormCount <- gs.StormCount + 1
         TakeAction gs
 
-    // This works best if we have as much mana as possible, so it's the
-    // last used mana source.
-    else if (gs.Hand |> HasCard DesperateRitual &&
-             CanPay (gs.PendingCosts + Cost DesperateRitual) gs.Mana) then
+    // This works best if we have as much mana as possible,
+    // so it's the last used mana source.
+    else if gs.Hand |> HasCard DesperateRitual && CanPay (Cost DesperateRitual) gs.Mana then
         log "Playing DesperateRitual for a net gain of 1 red mana."
         gs.Hand <- RemoveOneCard gs.Hand DesperateRitual
-        gs.PendingCosts <- gs.PendingCosts + Cost DesperateRitual
+
+        let mutable pendingCosts = Cost DesperateRitual
 
         // If there are other DesperateRituals in our hand, they can be
         // grafted onto this one.
         let mutable successfulGrafts = 0
         for desperateRitual in gs.Hand |> List.filter ((=) DesperateRitual) do
-            if CanPay (gs.PendingCosts + Cost DesperateRitual) gs.Mana then
-                gs.PendingCosts <- gs.PendingCosts + Cost DesperateRitual
+            if CanPay (pendingCosts + Cost DesperateRitual) gs.Mana then
+                pendingCosts <- pendingCosts + Cost DesperateRitual
                 successfulGrafts <- successfulGrafts + 1
 
         log (sprintf "Grafted %d extra DesperateRitual for %d bonus red mana."
                      successfulGrafts (successfulGrafts * 3))
 
-        while successfulGrafts > 0 do
-            gs.Mana <- gs.Mana + threeRedMana  // Bonus mana for each graft.
-        gs.Mana <- gs.Mana + threeRedMana      // Mana for the host card itself.
+        // Pay first, then reap the bounty.
+        match gs.Mana - pendingCosts with
+        | None -> raise (new InvalidOperationException "We should be able to pay for all these DesperateRituals.")
+        | Some result ->
+            gs.Mana <- result + threeRedMana  // Mana for the host card itself.
+            while successfulGrafts > 0 do
+                gs.Mana <- gs.Mana + threeRedMana  // Bonus mana for each graft.
+
         TakeAction gs
 
     else
@@ -265,8 +287,7 @@ let rec MulliganOrPlay (deck:Deck) (handSize:int) : bool =
             let startingMana = { red=0; green=numCott; redgreen=0; colorless=0; other=0 }
 
             // Start playing with this hand
-            TakeAction (new GameState (library, hand, [], [],
-                                       startingMana, noMana, 0, false))
+            TakeAction (new GameState (library, hand, [], [], startingMana, 0, false))
 
         else
             // Can we do the special mulligan?
