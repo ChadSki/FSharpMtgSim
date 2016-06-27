@@ -59,7 +59,6 @@ and MutSlot =
     // Convenience operators for manipulating the counter of a MutSlot
     static member (+=) (ms : MutSlot, a) = ms.counter <- ms.counter + a
     static member (-=) (ms : MutSlot, a) = ms.counter <- ms.counter - a
-    static member (!=) (ms : MutSlot, a) = ms.counter <- a
 
 let rec NextCombination (oldBoard:Board) : Board option =
     // Mutable copy of the deck
@@ -73,7 +72,7 @@ let rec NextCombination (oldBoard:Board) : Board option =
 
     // First lift all the tokens from the last slot
     lifted := mutDeck.[lastPos].counter
-    mutDeck.[lastPos] != 0
+    mutDeck.[lastPos].counter <- 0
 
     // Find the right-most token that isn't lifted
     match mutDeck |> Seq.toList
@@ -103,14 +102,14 @@ let rec NextCombination (oldBoard:Board) : Board option =
 
                 // Lift extra tokens
                 lifted := mutDeck.[!pos].counter - mutDeck.[!pos].max
-                mutDeck.[!pos] != mutDeck.[!pos].max
+                mutDeck.[!pos].counter <- mutDeck.[!pos].max
 
                 // Try to deposit them one slot to the right
                 pos := !pos + 1
                 if !pos <= lastPos
                 then
                     // Okay! Deposit tokens.
-                    mutDeck.[!pos] != !lifted
+                    mutDeck.[!pos].counter <- !lifted
                     lifted := 0
 
                     // Recurse, in case this slot also needs to overflow.
@@ -135,7 +134,7 @@ let rec NextCombination (oldBoard:Board) : Board option =
             while mutDeck.[!pos].counter >= mutDeck.[!pos].max do
                 // Pick up tokens
                 lifted := !lifted + mutDeck.[!pos].counter
-                mutDeck.[!pos] != 0
+                mutDeck.[!pos].counter <- 0
 
                 // Move one slot to the left
                 pos := !pos - 1
