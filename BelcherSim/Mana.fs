@@ -79,39 +79,6 @@ type ManaAmount =
 let Magnitude (m:ManaAmount) : int =
     m.red + m.green + m.redgreen + m.colorless + m.other
 
-let noMana = { red=0; green=0; redgreen=0; colorless=0; other=0 }
-let oneRed = { red=1; green=0; redgreen=0; colorless=0; other=0 }
-let oneGreen = { red=0; green=1; redgreen=0; colorless=0; other=0 }
-let oneRedGreen = { red=0; green=0; redgreen=1; colorless=0; other=0 }
-
-let Cost = function
-    | BurningWish ->           { red=1; green=0; redgreen=0; colorless=1; other=0 }
-    | ChancellorOfTheTangle -> { red=0; green=3; redgreen=0; colorless=4; other=0 }
-    | ChromeMox ->             noMana
-    | DesperateRitual ->       { red=1; green=0; redgreen=0; colorless=1; other=0 }
-    | ElvishSpiritGuide ->     { red=0; green=1; redgreen=0; colorless=2; other=0 }
-    | EmptyTheWarrens ->       { red=1; green=0; redgreen=0; colorless=3; other=0 }
-    | GitaxianProbe ->         { red=0; green=0; redgreen=0; colorless=1; other=1 }
-    | GoblinCharbelcher ->     { red=0; green=0; redgreen=0; colorless=4; other=0 }
-    | LandGrant ->             { red=0; green=1; redgreen=0; colorless=1; other=0 }
-    | LionsEyeDiamond ->       noMana
-    | LotusPetal ->            noMana
-    | Manamorphose ->          { red=0; green=0; redgreen=2; colorless=0; other=0 }
-    | PyreticRitual ->         { red=1; green=0; redgreen=0; colorless=1; other=0 }
-    | RiteOfFlame ->           { red=1; green=0; redgreen=0; colorless=0; other=0 }
-    | SeethingSong ->          { red=1; green=0; redgreen=0; colorless=2; other=0 }
-    | SerumPowder ->           { red=0; green=0; redgreen=0; colorless=3; other=0 }
-    | SimianSpiritGuide ->     { red=1; green=0; redgreen=0; colorless=2; other=0 }
-    | StreetWraith ->          { red=0; green=0; redgreen=0; colorless=3; other=2 }
-    | Taiga ->                 noMana
-    | TinderWall ->            { red=0; green=1; redgreen=0; colorless=0; other=0 }
-
-
-let CanPay (pendingCosts:ManaAmount) manaPool =
-    match manaPool - pendingCosts with
-    | None -> false
-    | Some _ -> true
-
 type ManaColor =
      | Red
      | Green
@@ -144,3 +111,44 @@ let Color = function
         -> Other
 
     | _ -> Colorless
+
+let noMana = { red=0; green=0; redgreen=0; colorless=0; other=0 }
+
+let OneMana = function
+    | Red -> { red=1; green=0; redgreen=0; colorless=0; other=0 }
+    | Green -> { red=0; green=1; redgreen=0; colorless=0; other=0 }
+    | RedGreen -> { red=0; green=0; redgreen=1; colorless=0; other=0 }
+    | Colorless -> { red=0; green=0; redgreen=0; colorless=1; other=0 }
+    | Other -> { red=0; green=0; redgreen=0; colorless=0; other=1 }
+
+let twoRedMana = (OneMana Red) + (OneMana Red)
+let threeRedMana = twoRedMana + (OneMana Red)
+let fiveRedMana = twoRedMana + threeRedMana
+
+let Cost = function
+    | BurningWish ->           { red=1; green=0; redgreen=0; colorless=1; other=0 }
+    | ChancellorOfTheTangle -> { red=0; green=3; redgreen=0; colorless=4; other=0 }
+    | ChromeMox ->             noMana
+    | DesperateRitual ->       { red=1; green=0; redgreen=0; colorless=1; other=0 }
+    | ElvishSpiritGuide ->     { red=0; green=1; redgreen=0; colorless=2; other=0 }
+    | EmptyTheWarrens ->       { red=1; green=0; redgreen=0; colorless=3; other=0 }
+    | GitaxianProbe ->         { red=0; green=0; redgreen=0; colorless=1; other=1 }
+    | GoblinCharbelcher ->     { red=0; green=0; redgreen=0; colorless=4; other=0 }
+    | LandGrant ->             { red=0; green=1; redgreen=0; colorless=1; other=0 }
+    | LionsEyeDiamond ->       noMana
+    | LotusPetal ->            noMana
+    | Manamorphose ->          { red=0; green=0; redgreen=2; colorless=0; other=0 }
+    | PyreticRitual ->         { red=1; green=0; redgreen=0; colorless=1; other=0 }
+    | RiteOfFlame ->           { red=1; green=0; redgreen=0; colorless=0; other=0 }
+    | SeethingSong ->          { red=1; green=0; redgreen=0; colorless=2; other=0 }
+    | SerumPowder ->           { red=0; green=0; redgreen=0; colorless=3; other=0 }
+    | SimianSpiritGuide ->     { red=1; green=0; redgreen=0; colorless=2; other=0 }
+    | StreetWraith ->          { red=0; green=0; redgreen=0; colorless=3; other=2 }
+    | Taiga ->                 noMana
+    | TinderWall ->            { red=0; green=1; redgreen=0; colorless=0; other=0 }
+
+
+let CanPay (pendingCosts:ManaAmount) manaPool =
+    match manaPool - pendingCosts with
+    | None -> false
+    | Some _ -> true

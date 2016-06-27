@@ -10,8 +10,7 @@ open Mana
 // Big 'ol mutable wad of state.
 type GameState(library: Card list,
                hand: Card list,
-               battlefield: (Card * bool) list,  // Card, and whether it's tapped
-               moxen: (ManaColor * bool) list,  // Imprinted Chrome Mox colors, and whether they've been spent
+               battlefield: Card list,  // Cards in play
                graveyard: Card list,
                mana: ManaAmount,
                pendingCosts: ManaAmount,
@@ -21,7 +20,6 @@ type GameState(library: Card list,
     member val Library = library with get, set
     member val Hand = hand with get, set
     member val Battlefield = battlefield with get, set
-    member val Moxen = moxen with get, set
     member val Graveyard = graveyard with get, set
     member val Mana = mana with get, set
     member val PendingCosts = pendingCosts with get, set
@@ -41,7 +39,7 @@ let rec TakeAction (gs:GameState) : bool =
     if gs.Hand |> HasCard ChromeMox then
         log "Playing ChromeMox."
         gs.Hand <- RemoveOneCard gs.Hand ChromeMox
-        gs.Battlefield <- (ChromeMox, false) :: gs.Battlefield
+        gs.Battlefield <- ChromeMox :: gs.Battlefield
         gs.StormCount <- gs.StormCount + 1
 
         // Not sure the best way to choose a card to imprint, so let's try them all!
@@ -67,11 +65,13 @@ let rec TakeAction (gs:GameState) : bool =
 
             | Some imprint ->
                 let imprintColor = Color (Cost imprint)
-                log (sprintf "Entering hypothetical: imprinting %s for %s." (CardLabel imprint) (ColorLabel imprintColor))
-                let hypotheticalGameState = gs.Clone()
-                hypotheticalGameState.Hand <- RemoveOneCard gs.Hand imprint
-                hypotheticalGameState.Moxen <- (imprintColor, false) :: gs.Moxen
-                if TakeAction hypotheticalGameState then
+                log (sprintf "Entering hypothetical: imprinting %s." (CardLabel imprint))
+                log (sprintf "Tapping ChromeMox for %s mana." (ColorLabel imprintColor))
+                let gs2 = gs.Clone()
+                gs2.Hand <- RemoveOneCard gs.Hand imprint
+                gs2.Mana <- gs2.Mana + OneMana imprintColor
+                gs2.Battlefield <- imprint :: gs2.Battlefield
+                if TakeAction gs2 then
                     log "Hypothetical succeeded!"
                     true
                 else
@@ -110,7 +110,7 @@ let rec TakeAction (gs:GameState) : bool =
     else if gs.Hand |> HasCard LionsEyeDiamond then
         log "Playing LionsEyeDiamond."
         gs.Hand <- RemoveOneCard gs.Hand LionsEyeDiamond
-        gs.Battlefield <- (LionsEyeDiamond, false) :: gs.Battlefield
+        gs.Battlefield <- LionsEyeDiamond :: gs.Battlefield
         gs.StormCount <- gs.StormCount + 1
         TakeAction gs
 
@@ -118,7 +118,7 @@ let rec TakeAction (gs:GameState) : bool =
     else if gs.Hand |> HasCard LotusPetal then
         log "Playing LotusPetal."
         gs.Hand <- RemoveOneCard gs.Hand LotusPetal
-        gs.Battlefield <- (LotusPetal, false) :: gs.Battlefield
+        gs.Battlefield <- LotusPetal :: gs.Battlefield
         gs.StormCount <- gs.StormCount + 1
         TakeAction gs
 
@@ -126,22 +126,22 @@ let rec TakeAction (gs:GameState) : bool =
     else if gs.Hand |> HasCard ElvishSpiritGuide then
         log "Playing ElvishSpiritGuide."
         gs.Hand <- RemoveOneCard gs.Hand ElvishSpiritGuide
-        gs.Mana <- gs.Mana + oneGreen
+        gs.Mana <- gs.Mana + OneMana Green
         TakeAction gs
 
     // Exile SimianSpiritGuide to provide green mana.
     else if gs.Hand |> HasCard SimianSpiritGuide then
         log "Playing SimianSpiritGuide."
         gs.Hand <- RemoveOneCard gs.Hand SimianSpiritGuide
-        gs.Mana <- gs.Mana + oneRed
+        gs.Mana <- gs.Mana + OneMana Red
         TakeAction gs
 
-    // Play our land for the turn, tapping for redgreen mana.
+    // Play our land for the turn, immediately tapping for redgreen mana.
     else if not gs.PlayedLand && gs.Hand |> HasCard Taiga then
         log "Playing Taiga."
         gs.Hand <- RemoveOneCard gs.Hand Taiga
-        gs.Battlefield <- (Taiga, true) :: gs.Battlefield
-        gs.Mana <- gs.Mana + oneRedGreen
+        gs.Battlefield <- Taiga :: gs.Battlefield
+        gs.Mana <- gs.Mana + OneMana RedGreen
         gs.PlayedLand <- true
         TakeAction gs
 
@@ -155,27 +155,72 @@ let rec TakeAction (gs:GameState) : bool =
         let newLibrary, drawn = Draw 1 gs.Library
         gs.Hand <-  List.append newHand drawn
         gs.Library <- newLibrary
+        gs.PendingCosts <- gs.PendingCosts + Cost Manamorphose  // TODO: Does this PendingCosts business check out,
+        gs.Mana <- gs.Mana + (OneMana RedGreen) + (OneMana RedGreen)  // or does it allow fishy business?
         gs.Graveyard <- Manamorphose :: gs.Graveyard
         gs.StormCount <- gs.StormCount + 1
-
-        // TODO: Does this PendingCosts business check out,
-        // or does it allow fishy business?
-        gs.PendingCosts <- gs.PendingCosts + Cost Manamorphose
-        gs.Mana <- gs.Mana + oneRedGreen + oneRedGreen
         TakeAction gs
 
     // TinderWall next because it costs scarcer green mana.
     else if (gs.Hand |> HasCard TinderWall &&
              CanPay (gs.PendingCosts + Cost TinderWall) gs.Mana) then
         log "Playing TinderWall."
-        gs.PendingCosts <- gs.PendingCosts + Cost TinderWall
         gs.Hand <- RemoveOneCard gs.Hand TinderWall
-        gs.Battlefield <- (TinderWall, false) :: gs.Battlefield
+        gs.PendingCosts <- gs.PendingCosts + Cost TinderWall
+        gs.Battlefield <- TinderWall :: gs.Battlefield
         gs.StormCount <- gs.StormCount + 1
         TakeAction gs
 
+    // RiteOfFlame is the cheapest red mana source.
+    else if (gs.Hand |> HasCard RiteOfFlame &&
+             CanPay (gs.PendingCosts + Cost RiteOfFlame) gs.Mana) then
+        log "Playing RiteOfFlame."
+        gs.Hand <- RemoveOneCard gs.Hand RiteOfFlame
+        gs.PendingCosts <- gs.PendingCosts + Cost RiteOfFlame
+
+        // Bonus red mana for each copy of this card in the graveyard.
+        let bonusMana = gs.Graveyard
+                        |> List.map (function
+                            | RiteOfFlame -> OneMana Red
+                            | _ -> noMana)
+                        |> List.reduce (+)
+
+        gs.Graveyard <- RiteOfFlame :: gs.Graveyard
+        gs.StormCount <- gs.StormCount + 1
+        TakeAction gs
+
+    // Relatively cheap mana source, dead simple.
+    else if (gs.Hand |> HasCard PyreticRitual &&
+             CanPay (gs.PendingCosts + Cost PyreticRitual) gs.Mana) then
+        log "Playing PyreticRitual."
+        gs.Hand <- RemoveOneCard gs.Hand PyreticRitual
+        gs.PendingCosts <- gs.PendingCosts + Cost PyreticRitual
+        gs.Mana <- gs.Mana + threeRedMana
+        gs.Graveyard <- PyreticRitual :: gs.Graveyard
+        gs.StormCount <- gs.StormCount + 1
+        TakeAction gs
+
+    // Large and simple mana source.
+    else if (gs.Hand |> HasCard SeethingSong &&
+             CanPay (gs.PendingCosts + Cost SeethingSong) gs.Mana) then
+        log "Playing SeethingSong."
+        gs.Hand <- RemoveOneCard gs.Hand SeethingSong
+        gs.PendingCosts <- gs.PendingCosts + Cost SeethingSong
+        gs.Mana <- gs.Mana + fiveRedMana
+        gs.Graveyard <- SeethingSong :: gs.Graveyard
+        gs.StormCount <- gs.StormCount + 1
+        TakeAction gs
+
+    // Pop some mana!
+
+    // Has card doesn't work... but I don't really need to keep track of tappedness do I?
+    else if gs.Battlefield |> HasCard TinderWall then
+        log "Popping TinderWall for 2 red mana."
+        gs.Battlefield <- RemoveOneCard gs.Battlefield TinderWall
+        gs.Mana <- gs.Mana + twoRedMana
+        TakeAction gs
+
     else
-        // Pop some mana
         false
 
 
@@ -206,7 +251,7 @@ let rec MulliganOrPlay (deck:Deck) (handSize:int) : bool =
             let startingMana = { red=0; green=numCott; redgreen=0; colorless=0; other=0 }
 
             // Start playing with this hand
-            TakeAction (new GameState (library, hand, [], [], [],
+            TakeAction (new GameState (library, hand, [], [],
                                        startingMana, noMana, 0, false))
 
         else
