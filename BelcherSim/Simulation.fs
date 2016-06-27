@@ -24,17 +24,18 @@ let ExploreDecks metaDeck =
     let combos = DeckCombinations metaDeck 60
 
     // The first is best by default
-    let bestDeck = ref (combos |> Seq.take(1)
-                               |> Seq.exactlyOne)
-    let bestScore = ref 0.0
+    let mutable bestDeck = []
+    let mutable bestScore = 0.0
 
     for deck in combos |> Seq.take(120) do
         let score = SimScore deck
-        if score > !bestScore then
-            bestScore := score
-            bestDeck := deck
+        if score > bestScore then
+            bestScore <- score
+            bestDeck <- deck
 
-    printfn "The best deck is %s" (PrettyPrintDeck !bestDeck)
+    if bestDeck = []
+    then printfn "All decks sucked."
+    else printfn "The best deck is %s." (PrettyPrintDeck bestDeck)
 
 do
     let myMetaDeck = function
