@@ -15,7 +15,8 @@ type GameState(library: Card list,
                graveyard: Card list,
                mana: ManaAmount,
                pendingCosts: ManaAmount,
-               stormCount: int) =
+               stormCount: int,
+               playedLand: bool) =
 
     member val Library = library with get, set
     member val Hand = hand with get, set
@@ -25,11 +26,14 @@ type GameState(library: Card list,
     member val Mana = mana with get, set
     member val PendingCosts = pendingCosts with get, set
     member val StormCount = stormCount with get, set
+    member val PlayedLand = playedLand with get, set
     member this.Clone() = this.MemberwiseClone() :?> GameState
 
 // General "what should I do next" function.
 // Returns true if we have won, false otherwise.
 let rec TakeAction (gs:GameState) : bool =
+
+    // Play ChromeMox first, since it's free and has the most possibilities.
 
     // ChromeMox imprints a colored card, then can tap to generate
     // mana of those colors. Even if nothing is imprinted, it helps
@@ -40,15 +44,17 @@ let rec TakeAction (gs:GameState) : bool =
         gs.Battlefield <- (ChromeMox, false) :: gs.Battlefield
         gs.StormCount <- gs.StormCount + 1
 
-        // Not sure which card to choose, so let's try them all!
+        // Not sure the best way to choose a card to imprint, so let's try them all!
         // `None` represents not imprinting a card, otherwise `Some card`.
-        // Stop if a possibility wins the game (`List.exists` will short-circuit).
-        //
-        // TODO: For performance, sort so that we're more likely to play the best option first?
-        None :: (gs.Hand |> Seq.distinct
-                         |> Seq.filter (fun card -> not (Colorless = Color (Cost card)))
-                         |> Seq.map (fun card -> Some card)
-                         |> Seq.toList)
+        let possibleImprints =
+            None :: (gs.Hand |> Seq.distinct
+                             |> Seq.filter (fun card -> not (Colorless = Color (Cost card)))
+                             |> Seq.map (fun card -> Some card)
+                             |> Seq.toList)
+
+        // Try each possibility in turn. Stop if a possibility wins the game.
+        // `List.exists` will short-circuit if a win is discovered.
+        possibleImprints
         |> List.exists (function
             | None ->
                 log "Entering hypothetical: nothing was imprinted."
@@ -71,6 +77,8 @@ let rec TakeAction (gs:GameState) : bool =
                 else
                     log "Returning from failed hypothetical."
                     false)
+
+    // Next play all the free cards that allow us to draw.
 
     // Paying the life cost, GitaxianProbe is effectively free.
     // Draw a card and put GitaxianProbe in the graveyard.
@@ -96,7 +104,50 @@ let rec TakeAction (gs:GameState) : bool =
         gs.StormCount <- gs.StormCount + 1
         TakeAction gs
 
-    // Cast Manamorphose if we can.
+    // Next play all other free cards.
+
+    // Cast LED now and increase the storm count. We can use it for mana later.
+    else if gs.Hand |> HasCard LionsEyeDiamond then
+        log "Playing LionsEyeDiamond."
+        gs.Hand <- RemoveOneCard gs.Hand LionsEyeDiamond
+        gs.Battlefield <- (LionsEyeDiamond, false) :: gs.Battlefield
+        gs.StormCount <- gs.StormCount + 1
+        TakeAction gs
+
+    // Cast LotusPetal now and increase the storm count. We can use it for mana later.
+    else if gs.Hand |> HasCard LotusPetal then
+        log "Playing LotusPetal."
+        gs.Hand <- RemoveOneCard gs.Hand LotusPetal
+        gs.Battlefield <- (LotusPetal, false) :: gs.Battlefield
+        gs.StormCount <- gs.StormCount + 1
+        TakeAction gs
+
+    // Exile ElvishSpiritGuide to provide green mana.
+    else if gs.Hand |> HasCard ElvishSpiritGuide then
+        log "Playing ElvishSpiritGuide."
+        gs.Hand <- RemoveOneCard gs.Hand ElvishSpiritGuide
+        gs.Mana <- gs.Mana + oneGreen
+        TakeAction gs
+
+    // Exile SimianSpiritGuide to provide green mana.
+    else if gs.Hand |> HasCard SimianSpiritGuide then
+        log "Playing SimianSpiritGuide."
+        gs.Hand <- RemoveOneCard gs.Hand SimianSpiritGuide
+        gs.Mana <- gs.Mana + oneRed
+        TakeAction gs
+
+    // Play our land for the turn, tapping for redgreen mana.
+    else if not gs.PlayedLand && gs.Hand |> HasCard Taiga then
+        log "Playing Taiga."
+        gs.Hand <- RemoveOneCard gs.Hand Taiga
+        gs.Battlefield <- (Taiga, true) :: gs.Battlefield
+        gs.Mana <- gs.Mana + oneRedGreen
+        gs.PlayedLand <- true
+        TakeAction gs
+
+    // Now play our mana-gain cards.
+
+    // Manamorphose first since it allows us to draw and makes redgreen mana.
     else if (gs.Hand |> HasCard Manamorphose &&
              CanPay (gs.PendingCosts + Cost Manamorphose) gs.Mana) then
         log "Playing Manamorphose."
@@ -113,35 +164,18 @@ let rec TakeAction (gs:GameState) : bool =
         gs.Mana <- gs.Mana + oneRedGreen + oneRedGreen
         TakeAction gs
 
+    // TinderWall next because it costs scarcer green mana.
+    else if (gs.Hand |> HasCard TinderWall &&
+             CanPay (gs.PendingCosts + Cost TinderWall) gs.Mana) then
+        log "Playing TinderWall."
+        gs.PendingCosts <- gs.PendingCosts + Cost TinderWall
+        gs.Hand <- RemoveOneCard gs.Hand TinderWall
+        gs.Battlefield <- (TinderWall, false) :: gs.Battlefield
+        gs.StormCount <- gs.StormCount + 1
+        TakeAction gs
+
     else
-        // Cast LED now and increase the storm count. We can use it for mana later.
-        while gs.Hand |> HasCard LionsEyeDiamond do
-            log "Playing LionsEyeDiamond."
-            gs.Hand <- RemoveOneCard gs.Hand LionsEyeDiamond
-            gs.Battlefield <- (LionsEyeDiamond, false) :: gs.Battlefield
-            gs.StormCount <- gs.StormCount + 1
-
-        // Exile ElvishSpiritGuide to provide green mana.
-        while gs.Hand |> HasCard ElvishSpiritGuide do
-            log "Playing ElvishSpiritGuide."
-            gs.Hand <- RemoveOneCard gs.Hand ElvishSpiritGuide
-            gs.Mana <- gs.Mana + oneGreen
-
-        // Exile SimianSpiritGuide to provide green mana.
-        while gs.Hand |> HasCard SimianSpiritGuide do
-            log "Playing SimianSpiritGuide."
-            gs.Hand <- RemoveOneCard gs.Hand SimianSpiritGuide
-            gs.Mana <- gs.Mana + oneRed
-
-        // Cast all TinderWalls we can.
-        while (gs.Hand |> HasCard TinderWall &&
-               CanPay (gs.PendingCosts + Cost TinderWall) gs.Mana) do
-            log "Playing TinderWall."
-            gs.PendingCosts <- gs.PendingCosts + Cost TinderWall
-            gs.Hand <- RemoveOneCard gs.Hand TinderWall
-            gs.Battlefield <- (TinderWall, false) :: gs.Battlefield
-            gs.StormCount <- gs.StormCount + 1
-
+        // Pop some mana
         false
 
 
@@ -158,6 +192,8 @@ let rec MulliganOrPlay (deck:Deck) (handSize:int) : bool =
 
         // Mulligan right away unless we hold key cards
         if hand |> Seq.exists IsWinCondition then
+            log (sprintf "Choosing a hand with %d win condition(s)."
+                         (hand |> List.filter IsWinCondition |> List.length))
 
             // Collect our free mana, if we get any.
             let numCott =
@@ -170,7 +206,8 @@ let rec MulliganOrPlay (deck:Deck) (handSize:int) : bool =
             let startingMana = { red=0; green=numCott; redgreen=0; colorless=0; other=0 }
 
             // Start playing with this hand
-            TakeAction (new GameState (library, hand, [], [], [], startingMana, noMana, 0))
+            TakeAction (new GameState (library, hand, [], [], [],
+                                       startingMana, noMana, 0, false))
 
         else
             // Can we do the special mulligan?

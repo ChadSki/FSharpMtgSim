@@ -2,19 +2,20 @@
 
 open System
 open Microsoft.FSharp.Collections
+open Logging
 open Mancala
 open Cards
 open Deck
 open Game
 
-// individual deck score
+// Individual deck score.
 let SimScore deck =
-    printfn "%s" (PrettyPrintDeck deck)
+    log (sprintf "%s" (PrettyPrintDeck deck))
     if AttemptWin deck
     then 1.0
     else 0.0
 
-// keeps track of best-performing decks
+// Keeps track of best-performing decks.
 let ExploreDecks metaDeck =
     // TODO for range in metadeck, create mapping of
     // Card -> numCards:int ->(numWins:int, numGames:int)
@@ -22,8 +23,6 @@ let ExploreDecks metaDeck =
     // get an idea of how good having N of a certain card is.
 
     let combos = DeckCombinations metaDeck 60
-
-    // The first is best by default
     let mutable bestDeck = []
     let mutable bestScore = 0.0
 
@@ -34,13 +33,16 @@ let ExploreDecks metaDeck =
             bestDeck <- deck
 
     if bestDeck = []
-    then printfn "All decks sucked."
-    else printfn "The best deck is %s." (PrettyPrintDeck bestDeck)
+    then log "All decks sucked."
+    else log (sprintf "The best deck is %s." (PrettyPrintDeck bestDeck))
 
 do
-    let myMetaDeck = function
-        | BurningWish | EmptyTheWarrens | GoblinCharbelcher | LionsEyeDiamond | LotusPetal
+    let metaDeck = function
+        | BurningWish | GoblinCharbelcher | LionsEyeDiamond | LotusPetal
           -> { min=4; max=4 }  // Core cards are always maxed out
+
+        | EmptyTheWarrens
+          -> { min=3; max=3 }  // One of these has to be in the sideboard.
 
         | ChancellorOfTheTangle | ChromeMox    | DesperateRitual | ElvishSpiritGuide
         | GitaxianProbe         | LandGrant    | Manamorphose    | PyreticRitual
@@ -48,5 +50,8 @@ do
         | StreetWraith          | Taiga        | TinderWall
           -> { min=0; max=4 }  // Non-core
 
-    ExploreDecks myMetaDeck
+    // TODO: 2nd metadeck with 0 BurningWish and 4 EmptyTheWarrens?
+    //       ExploreDecks instead takes merged sequences.
+
+    ExploreDecks metaDeck
     ()
