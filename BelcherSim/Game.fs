@@ -31,33 +31,6 @@ type GameState(library: Card list,
 // Returns true if we have won, false otherwise.
 let rec TakeAction (gs:GameState) : bool =
 
-    // Paying the life cost, GitaxianProbe is effectively free.
-    // Draw a card and put GitaxianProbe in the graveyard.
-    while gs.Hand |> HasCard GitaxianProbe do
-        log "Playing GitaxianProbe"
-        let newHand = RemoveOneCard gs.Hand GitaxianProbe
-        let newLibrary, drawn = Draw 1 gs.Library
-        gs.Hand <- List.append newHand drawn
-        gs.Library <- newLibrary
-        gs.Graveyard <- GitaxianProbe :: gs.Graveyard
-
-    // Paying the life cost, StreetWraith is effectively free.
-    // Draw a card and put StreetWraith in the graveyard.
-    while gs.Hand |> HasCard StreetWraith do
-        log "Playing StreetWrait.h"
-        let newHand = RemoveOneCard gs.Hand StreetWraith
-        let newLibrary, drawn = Draw 1 gs.Library
-        gs.Hand <-  List.append newHand drawn
-        gs.Library <- newLibrary
-        gs.Graveyard <- StreetWraith :: gs.Graveyard
-
-    // Cast LED now and increase the storm count. We can use it for mana later.
-    while gs.Hand |> HasCard LionsEyeDiamond do
-        log "Playing LionsEyeDiamond."
-        gs.Hand <- RemoveOneCard gs.Hand LionsEyeDiamond
-        gs.Battlefield <- (LionsEyeDiamond, false) :: gs.Battlefield
-        gs.StormCount <- gs.StormCount + 1
-
     // ChromeMox imprints a colored card, then can tap to generate
     // mana of those colors. Even if nothing is imprinted, it helps
     // boost the storm count.
@@ -73,6 +46,7 @@ let rec TakeAction (gs:GameState) : bool =
         //
         // TODO: For performance, sort so that we're more likely to play the best option first?
         None :: (gs.Hand |> Seq.distinct
+                         |> Seq.filter (fun card -> not (Colorless = Color (Cost card)))
                          |> Seq.map (fun card -> Some card)
                          |> Seq.toList)
         |> List.exists (function
@@ -97,8 +71,34 @@ let rec TakeAction (gs:GameState) : bool =
                 else
                     log "Returning from failed hypothetical."
                     false)
-
     else
+        // Paying the life cost, GitaxianProbe is effectively free.
+        // Draw a card and put GitaxianProbe in the graveyard.
+        while gs.Hand |> HasCard GitaxianProbe do
+            log "Playing GitaxianProbe"
+            let newHand = RemoveOneCard gs.Hand GitaxianProbe
+            let newLibrary, drawn = Draw 1 gs.Library
+            gs.Hand <- List.append newHand drawn
+            gs.Library <- newLibrary
+            gs.Graveyard <- GitaxianProbe :: gs.Graveyard
+
+        // Paying the life cost, StreetWraith is effectively free.
+        // Draw a card and put StreetWraith in the graveyard.
+        while gs.Hand |> HasCard StreetWraith do
+            log "Playing StreetWrait.h"
+            let newHand = RemoveOneCard gs.Hand StreetWraith
+            let newLibrary, drawn = Draw 1 gs.Library
+            gs.Hand <-  List.append newHand drawn
+            gs.Library <- newLibrary
+            gs.Graveyard <- StreetWraith :: gs.Graveyard
+
+        // Cast LED now and increase the storm count. We can use it for mana later.
+        while gs.Hand |> HasCard LionsEyeDiamond do
+            log "Playing LionsEyeDiamond."
+            gs.Hand <- RemoveOneCard gs.Hand LionsEyeDiamond
+            gs.Battlefield <- (LionsEyeDiamond, false) :: gs.Battlefield
+            gs.StormCount <- gs.StormCount + 1
+
         // Exile ElvishSpiritGuide to provide green mana.
         while gs.Hand |> HasCard ElvishSpiritGuide do
             log "Playing ElvishSpiritGuide."
@@ -111,9 +111,24 @@ let rec TakeAction (gs:GameState) : bool =
             gs.Hand <- RemoveOneCard gs.Hand SimianSpiritGuide
             gs.Mana <- gs.Mana + oneRed
 
+        // Cast all Manamorphose we can.
+        while (gs.Hand |> HasCard Manamorphose &&
+               CanPlay Manamorphose gs.PendingCosts gs.Mana) do
+            log "Playing Manamorphose."
+            let newHand = RemoveOneCard gs.Hand Manamorphose
+            let newLibrary, drawn = Draw 1 gs.Library
+            gs.Hand <-  List.append newHand drawn
+            gs.Library <- newLibrary
+            gs.Graveyard <- Manamorphose :: gs.Graveyard
+
+            // TODO: Does this PendingCosts business check out,
+            // or does it allow fishy business?
+            gs.PendingCosts <- gs.PendingCosts + Cost Manamorphose
+            gs.Mana <- gs.Mana + oneRedGreen + oneRedGreen
+
         // Cast all TinderWalls we can.
-        while gs.Hand |> HasCard TinderWall &&
-              CanPlay TinderWall gs.PendingCosts gs.Mana do
+        while (gs.Hand |> HasCard TinderWall &&
+               CanPlay TinderWall gs.PendingCosts gs.Mana) do
             log "Playing TinderWall."
             gs.PendingCosts <- gs.PendingCosts + Cost TinderWall
             gs.Hand <- RemoveOneCard gs.Hand TinderWall
@@ -136,14 +151,14 @@ let rec MulliganOrPlay (deck:Deck) (handSize:int) : bool =
         // Mulligan right away unless we hold key cards
         if hand |> Seq.exists IsWinCondition then
 
-            // This hand is worth keeping.
             // Collect our free mana, if we get any.
             let numCott =
                 hand |> List.map (fun card -> if card = ChancellorOfTheTangle
                                               then 1 else 0)
                      |> List.reduce (+)
 
-            log (sprintf "Collecting %d green mana from ChancellorOfTheTangle." numCott)
+            if numCott > 0 then
+                log (sprintf "Collecting %d green mana from ChancellorOfTheTangle." numCott)
             let startingMana = { red=0; green=numCott; redgreen=0; colorless=0; other=0 }
 
             // Start playing with this hand

@@ -82,6 +82,7 @@ let Magnitude (m:ManaAmount) : int =
 let noMana = { red=0; green=0; redgreen=0; colorless=0; other=0 }
 let oneRed = { red=1; green=0; redgreen=0; colorless=0; other=0 }
 let oneGreen = { red=0; green=1; redgreen=0; colorless=0; other=0 }
+let oneRedGreen = { red=0; green=0; redgreen=1; colorless=0; other=0 }
 
 let Cost = function
     | BurningWish ->           { red=1; green=0; redgreen=0; colorless=1; other=0 }

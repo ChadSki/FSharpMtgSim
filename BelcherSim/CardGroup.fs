@@ -2,11 +2,13 @@
 
 open System
 open CryptoRandom
+open Logging
 open Cards
 open Deck
 
 // Draw n cards. Return a new (smaller) library and the drawn cards.
 let Draw n cardGroup =
+    log (sprintf "Drawing %d cards. %d left in library." n ((Seq.length cardGroup) - n))
     cardGroup |> Seq.skip n |> Seq.toList,
     cardGroup |> Seq.take n |> Seq.toList
 
