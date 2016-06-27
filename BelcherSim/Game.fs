@@ -6,7 +6,6 @@ open Cards
 open Deck
 open CardGroup
 open Mana
-open ChromeMox
 
 // Big 'ol mutable wad of state.
 type GameState(library: Card list,
@@ -29,6 +28,7 @@ type GameState(library: Card list,
     member this.Clone() = this.MemberwiseClone() :?> GameState
 
 // General "what should I do next" function.
+// Returns true if we have won, false otherwise.
 let rec TakeAction (gs:GameState) : bool =
 
     // Paying the life cost, GitaxianProbe is effectively free.
@@ -61,42 +61,65 @@ let rec TakeAction (gs:GameState) : bool =
     // ChromeMox imprints a colored card, then can tap to generate
     // mana of those colors. Even if nothing is imprinted, it helps
     // boost the storm count.
-    while gs.Hand |> HasCard ChromeMox do
+    if gs.Hand |> HasCard ChromeMox then
         log "Playing ChromeMox."
         gs.Hand <- RemoveOneCard gs.Hand ChromeMox
         gs.Battlefield <- (ChromeMox, false) :: gs.Battlefield
         gs.StormCount <- gs.StormCount + 1
 
-        // If we imprinted a card, add its color to the list of moxen.
-        match ChooseImprint gs.Hand with
-        | None -> log "Nothing was imprinted."
-        | Some imprint ->
-            let imprintColor = Color (Cost imprint)
-            log (sprintf "Imprinted %s for %s." (CardLabel imprint) (ColorLabel imprintColor))
-            gs.Hand <- RemoveOneCard gs.Hand imprint
-            gs.Moxen <- (imprintColor, false) :: gs.Moxen
+        // Not sure which card to choose, so let's try them all!
+        // `None` represents not imprinting a card, otherwise `Some card`.
+        // Stop if a possibility wins the game (`List.exists` will short-circuit).
+        //
+        // TODO: For performance, sort so that we're more likely to play the best option first?
+        None :: (gs.Hand |> Seq.distinct
+                         |> Seq.map (fun card -> Some card)
+                         |> Seq.toList)
+        |> List.exists (function
+            | None ->
+                log "Entering hypothetical: nothing was imprinted."
+                if TakeAction (gs.Clone()) then
+                    log "Hypothetical succeeded!"
+                    true
+                else
+                    log "Returning from failed hypothetical."
+                    false
 
-    // Exile ElvishSpiritGuide to provide green mana.
-    while gs.Hand |> HasCard ElvishSpiritGuide do
-        log "Playing ElvishSpiritGuide."
-        gs.Hand <- RemoveOneCard gs.Hand ElvishSpiritGuide
-        gs.Mana <- gs.Mana + oneGreen
+            | Some imprint ->
+                let imprintColor = Color (Cost imprint)
+                log (sprintf "Entering hypothetical: imprinting %s for %s." (CardLabel imprint) (ColorLabel imprintColor))
+                let hypotheticalGameState = gs.Clone()
+                hypotheticalGameState.Hand <- RemoveOneCard gs.Hand imprint
+                hypotheticalGameState.Moxen <- (imprintColor, false) :: gs.Moxen
+                if TakeAction hypotheticalGameState then
+                    log "Hypothetical succeeded!"
+                    true
+                else
+                    log "Returning from failed hypothetical."
+                    false)
 
-    // Exile SimianSpiritGuide to provide green mana.
-    while gs.Hand |> HasCard SimianSpiritGuide do
-        log "Playing SimianSpiritGuide."
-        gs.Hand <- RemoveOneCard gs.Hand SimianSpiritGuide
-        gs.Mana <- gs.Mana + oneRed
+    else
+        // Exile ElvishSpiritGuide to provide green mana.
+        while gs.Hand |> HasCard ElvishSpiritGuide do
+            log "Playing ElvishSpiritGuide."
+            gs.Hand <- RemoveOneCard gs.Hand ElvishSpiritGuide
+            gs.Mana <- gs.Mana + oneGreen
 
-    // Cast all TinderWalls we can.
-    while gs.Hand |> HasCard TinderWall &&
-          CanPlay TinderWall gs.PendingCosts gs.Mana do
-        log "Playing TinderWall."
-        gs.PendingCosts <- gs.PendingCosts + Cost TinderWall
-        gs.Hand <- RemoveOneCard gs.Hand TinderWall
-        gs.Battlefield <- (TinderWall, false) :: gs.Battlefield
+        // Exile SimianSpiritGuide to provide green mana.
+        while gs.Hand |> HasCard SimianSpiritGuide do
+            log "Playing SimianSpiritGuide."
+            gs.Hand <- RemoveOneCard gs.Hand SimianSpiritGuide
+            gs.Mana <- gs.Mana + oneRed
 
-    false
+        // Cast all TinderWalls we can.
+        while gs.Hand |> HasCard TinderWall &&
+              CanPlay TinderWall gs.PendingCosts gs.Mana do
+            log "Playing TinderWall."
+            gs.PendingCosts <- gs.PendingCosts + Cost TinderWall
+            gs.Hand <- RemoveOneCard gs.Hand TinderWall
+            gs.Battlefield <- (TinderWall, false) :: gs.Battlefield
+
+        false
 
 
 // Mulligan until we find an adequate hand.
@@ -104,6 +127,7 @@ let rec MulliganOrPlay (deck:Deck) (handSize:int) : bool =
 
     // Failure if we have mulliganed to death
     if handSize = 0 then
+        log "Mulliganed to death."
         false
     else
         // Shuffle the deck and draw our opening hand
@@ -119,6 +143,7 @@ let rec MulliganOrPlay (deck:Deck) (handSize:int) : bool =
                                               then 1 else 0)
                      |> List.reduce (+)
 
+            log (sprintf "Collecting %d green mana from ChancellorOfTheTangle." numCott)
             let startingMana = { red=0; green=numCott; redgreen=0; colorless=0; other=0 }
 
             // Start playing with this hand
@@ -127,6 +152,7 @@ let rec MulliganOrPlay (deck:Deck) (handSize:int) : bool =
         else
             // Can we do the special mulligan?
             if hand |> Seq.exists ((=) SerumPowder) then
+                log "Mulliganing with SerumPowder."
 
                 // Exile Serum Powder and mulligan with the same hand size
                 let newDeck = deck |> List.map (fun (card, num) ->
@@ -135,6 +161,7 @@ let rec MulliganOrPlay (deck:Deck) (handSize:int) : bool =
 
             else
                 // Normal mulligan
+                log "Mulliganing."
                 MulliganOrPlay deck (handSize - 1)
 
 // Can we win the game? If so, return true. Otherwise, false.
