@@ -87,11 +87,11 @@ type ManaColor =
      | Other
 
 let ColorLabel = function
-    | Red -> "Red"
-    | Green -> "Green"
-    | RedGreen -> "RedGreen"
-    | Colorless -> "Colorless"
-    | Other -> "Other"
+    | Red -> "R"
+    | Green -> "G"
+    | RedGreen -> "R/G"
+    | Colorless -> "C"
+    | Other -> "?"
 
 let Color = function
     | { red=r; green=g; redgreen=rg; colorless=_; other=_ }

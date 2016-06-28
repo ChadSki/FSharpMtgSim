@@ -26,7 +26,7 @@ let ExploreDecks metaDeck =
     let mutable bestDeck = []
     let mutable bestScore = 0.0
 
-    for deck in combos |> Seq.take(120) do
+    for deck in combos do
         let score = SimScore deck
         if score > bestScore then
             bestScore <- score
@@ -48,10 +48,10 @@ do
         | GitaxianProbe         | LandGrant    | Manamorphose    | PyreticRitual
         | RiteOfFlame           | SeethingSong | SerumPowder     | SimianSpiritGuide
         | StreetWraith          | Taiga        | TinderWall
-          -> { min=0; max=4 }  // Non-core
+          -> { min=2; max=4 }  // Non-core
 
     // TODO: 2nd metadeck with 0 BurningWish and 4 EmptyTheWarrens?
     //       ExploreDecks instead takes merged sequences.
 
     ExploreDecks metaDeck
-    ()
+    closeLog ()
