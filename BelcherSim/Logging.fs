@@ -12,7 +12,7 @@ let logFile = new StreamWriter(LogName logNumber)
 
 let log (str:string) =
     logFile.WriteLine(str)
-    //printfn "%s" str
+    printfn "%s" str
 
 log (sprintf "Opened logfile '%s'" (LogName logNumber))
 

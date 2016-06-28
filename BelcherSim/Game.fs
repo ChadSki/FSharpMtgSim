@@ -10,7 +10,7 @@ open Mana
 // Big 'ol mutable wad of state.
 type GameState(library: Card list,
                hand: Card list,
-               battlefield: Card list,  // Cards in play
+               battlefield: Card list,
                graveyard: Card list,
                mana: ManaAmount,
                stormCount: int,
@@ -151,7 +151,7 @@ let rec TakeAction (gs:GameState) : bool =
         match gs.Mana - Cost Manamorphose with
         | None -> raise (new InvalidOperationException "We already asserted that we can pay for Manamorphose.")
         | Some result ->
-            gs.Mana <- result + OneMana RedGreen + OneMana RedGreen
+            gs.Mana <- result + twoRedGreenMana
 
         gs.Graveyard <- Manamorphose :: gs.Graveyard
         gs.StormCount <- gs.StormCount + 1
@@ -276,8 +276,43 @@ let rec TakeAction (gs:GameState) : bool =
         | Some result ->
             gs.Mana <- result
 
+        // Crack open a diamond! Requires discarding your hand.
+        if gs.Battlefield |> HasCard LionsEyeDiamond then
+            gs.Battlefield <- RemoveOneCard gs.Battlefield LionsEyeDiamond
+            gs.Graveyard <- LionsEyeDiamond :: List.append gs.Graveyard gs.Hand
+            gs.Hand <- []
+            gs.Mana <- gs.Mana + threeRedGreenMana
 
-        true
+        // Pay the cost to activate Charbelcher's ability.
+        match gs.Mana - threeColorlessMana with
+        | None ->
+            // Failed to play Charbelcher's ability. You lose.
+            false
+
+        | Some result ->
+            // Ability activated! Reveal cards until a land is encountered.
+            let mutable continueRevealing = true
+            let revealed, remaining =
+                gs.Library
+                |> List.partition (fun card ->
+                    if continueRevealing then
+                        if card = Taiga then
+                            continueRevealing <- false
+                        true
+                    else false)
+
+            // Double damage for encountering a mountain (Taiga).
+            let multiplier =
+                if Taiga = Seq.last revealed then 2 else 1
+
+            // We win if we deal more than 20 damage
+            let damage = (List.length revealed) * multiplier
+            if damage >= 20 then
+                log (sprintf "We win, dealing %d damage!" damage)
+                true
+            else
+                log (sprintf "We lose, dealing only %d damage." damage)
+                false
 
     else
         false
@@ -310,7 +345,12 @@ let rec MulliganOrPlay (deck:Deck) (handSize:int) : bool =
             let startingMana = { red=0; green=numCott; redgreen=0; colorless=0; other=0 }
 
             // Start playing with this hand
-            TakeAction (new GameState (library, hand, [], [], startingMana, 0, false))
+            if TakeAction (new GameState (library, hand, [], [], startingMana, 0, false)) then
+                log "win"
+                true
+            else
+                log "lose"
+                false
 
         else
             // Can we do the special mulligan?

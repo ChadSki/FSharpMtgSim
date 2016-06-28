@@ -58,6 +58,7 @@ type ManaAmount =
             let mutable remaining = right.redgreen
             if other < 0 then
                 remaining <- remaining - other
+                other <- 0
 
             green <- green - remaining      // Try taking from green.
             if green < 0 then
@@ -79,12 +80,7 @@ type ManaAmount =
 let Magnitude (m:ManaAmount) : int =
     m.red + m.green + m.redgreen + m.colorless + m.other
 
-type ManaColor =
-     | Red
-     | Green
-     | RedGreen
-     | Colorless
-     | Other
+type ManaColor = Red | Green | RedGreen | Colorless | Other
 
 let ColorLabel = function
     | Red -> "R"
@@ -124,6 +120,9 @@ let OneMana = function
 let twoRedMana = OneMana Red + OneMana Red
 let threeRedMana = twoRedMana + OneMana Red
 let fiveRedMana = twoRedMana + threeRedMana
+let twoRedGreenMana = OneMana RedGreen + OneMana RedGreen
+let threeRedGreenMana = twoRedGreenMana + OneMana RedGreen
+let threeColorlessMana = OneMana Colorless + OneMana Colorless + OneMana Colorless
 
 let Cost = function
     | BurningWish ->           { red=1; green=0; redgreen=0; colorless=1; other=0 }
