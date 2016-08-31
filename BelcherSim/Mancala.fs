@@ -29,24 +29,24 @@ let PrettyPrintBoard (board:Board) =
 
 let InitialCombination (emptyBoard:Board) totalTokens : Board =
     // mutable reference represents the global token pool
-    let numTokens = ref totalTokens
+    let mutable numTokens = totalTokens
 
     // Distribute the tokens starting with the leftmost slots.
     let filledBoard =
         emptyBoard |> List.map (fun slot ->
-            match !numTokens - slot.max with
+            match numTokens - slot.max with
 
             // We want more than is available. Take what is left.
             | leftover when leftover < 0 ->
-                let allThatsLeft = !numTokens
-                numTokens := 0
+                let allThatsLeft = numTokens
+                numTokens <- 0
                 { count = allThatsLeft; max = slot.max }
 
             | _ ->  // There's enough to fill the slot to the brim
-                numTokens := !numTokens - slot.max
+                numTokens <- numTokens - slot.max
                 { count = slot.max; max = slot.max })
 
-    if !numTokens > 0 then raise (new ArgumentException "Too many tokens to fit in these slots")
+    if numTokens > 0 then raise (new ArgumentException "Too many tokens to fit in these slots")
     else filledBoard
 
 type OverflowResult = SpilledOffEnd | ValidState

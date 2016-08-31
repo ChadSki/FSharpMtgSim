@@ -19,16 +19,15 @@ let PrettyPrintDeck (deck:Deck) =
 
 // Given a metadeck and number of cards, creates the inital MancalaSequence board
 let MetaDeckToEmptyBoard (metaDeck:MetaDeck) (totalCards:int) : Board * int =
-    let numCards = ref totalCards
+    let mutable numCards = totalCards
     let emptyBoard =
         allCards |> List.map (fun card -> let range = metaDeck card
-                                          numCards := !numCards - range.min
+                                          numCards <- numCards - range.min
                                           { count = 0
                                             max = (range.max - range.min) })
 
-    // In F#, `!` is used to access a ref cell. It's not logical negation.
-    if !numCards < 0 then raise (new ArgumentException "Too few cards to distribute minimums required by the deck definition.")
-    else emptyBoard, !numCards
+    if numCards < 0 then raise (new ArgumentException "Too few cards to distribute minimums required by the deck definition.")
+    else emptyBoard, numCards
 
 // Given a metadeck and MancalaSequence board state, returns the corresponding deck
 let BoardToDeck (metaDeck:MetaDeck) (combo:Board) : Deck =

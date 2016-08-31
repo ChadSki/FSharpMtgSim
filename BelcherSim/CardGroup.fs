@@ -34,17 +34,17 @@ let rng = new CryptoRandom()
 // Return a new, shuffled list. Fisher-Yates algorithm.
 let Shuffle original =
     let deck = List.toArray original
-    let n = ref deck.Length
+    let mutable n = deck.Length
 
-    while !n > 1 do
+    while n > 1 do
         // Choose random index
-        let k = rng.Next !n
-        n := !n - 1
+        let k = rng.Next n
+        n <- n - 1
 
         // Swap
         let temp = Array.get deck k
-        Array.set deck k (Array.get deck !n)
-        Array.set deck !n temp
+        Array.set deck k (Array.get deck n)
+        Array.set deck n temp
 
     Array.toList deck
 
