@@ -32,12 +32,11 @@ type ManaAmount =
         // Can't cast things that require `other` mana (we can use it for colorless though)
         if not (right.other = 0) then None
         else
-            // Start with obvious subtractions
+            // Start with naive subtractions
             let mutable red = left.red - right.red
             let mutable green = left.green - right.green
-            let mutable colorless = left.colorless - right.colorless
 
-            // Green and red can steal from redgreen
+            // Green and red costs can be paid with `redgreen`
             let mutable redgreen = left.redgreen
             if green < 0 then
                 redgreen <- redgreen + green
@@ -46,36 +45,43 @@ type ManaAmount =
                 redgreen <- redgreen + red
                 red <- 0
 
-            // Colorless can steal from other.
-            let mutable other = left.other
-            if colorless < 0 then
-                other <- other + colorless
-                colorless <- 0
-
-            // Redgreen/colorless can use green or red or redgreen (used in that order).
-
-            // First add the whole mess together.
-            let mutable remaining = right.redgreen
-            if other < 0 then
-                remaining <- remaining - other
-                other <- 0
-
-            green <- green - remaining      // Try taking from green.
-            if green < 0 then
-                red <- red + green          // Try taking from red
-                green <- 0
-
-            if red < 0 then
-                redgreen <- redgreen + red  // Try taking from redgreen
-                red <- 0
-
-            // If we're in negative redgreen mana, we've run out.
+            // Fail if we ran out of colored mana
             if redgreen < 0 then None
-            else Some { red       = red
-                        green     = green
-                        redgreen  = redgreen
-                        colorless = colorless
-                        other     = other }
+            else
+                // Naive subtract colorless
+                let mutable colorless = left.colorless - right.colorless
+
+                // Colorless costs can be paid with `other`
+                let mutable other = left.other
+                if colorless < 0 then
+                    other <- other + colorless
+                    colorless <- 0
+
+                // Redgreen/colorless costs can be paid with `green` or
+                // `red` or `redgreen` (attempted in that order).
+
+                // First add the whole mess together.
+                let mutable remaining = right.redgreen
+                if other < 0 then
+                    remaining <- remaining - other
+                    other <- 0
+
+                green <- green - remaining      // Try taking from green.
+                if green < 0 then
+                    red <- red + green          // Try taking from red
+                    green <- 0
+
+                if red < 0 then
+                    redgreen <- redgreen + red  // Try taking from redgreen
+                    red <- 0
+
+                // If we're in negative redgreen mana, we've run out.
+                if redgreen < 0 then None
+                else Some { red       = red
+                            green     = green
+                            redgreen  = redgreen
+                            colorless = colorless
+                            other     = other }
 
 let Magnitude (m:ManaAmount) : int =
     m.red + m.green + m.redgreen + m.colorless + m.other

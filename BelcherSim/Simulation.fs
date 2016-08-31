@@ -9,11 +9,12 @@ open Deck
 open Game
 
 // Individual deck score.
-let SimScore deck =
-    log (sprintf "%s" (PrettyPrintDeck deck))
-    if AttemptWin deck
-    then 1.0
-    else 0.0
+let SimScore deck numRuns =
+    let trials = Array.Parallel.init numRuns (fun _ -> AttemptWin deck)
+    let wins = trials |> Seq.filter (fun x -> x)
+                      |> Seq.length
+
+    (float wins) / (float numRuns)
 
 // Keeps track of best-performing decks.
 let ExploreDecks metaDeck =
@@ -27,14 +28,15 @@ let ExploreDecks metaDeck =
     let mutable bestScore = 0.0
 
     for deck in combos do
-        let score = SimScore deck
+        let score = SimScore deck 100
         if score > bestScore then
             bestScore <- score
             bestDeck <- deck
+            printfn "New best score %f" bestScore
 
     if bestDeck = []
     then log "All decks sucked."
-    else log (sprintf "The best deck is %s." (PrettyPrintDeck bestDeck))
+    else log (sprintf "The best deck is %swith a score of %f" (PrettyPrintDeck bestDeck) bestScore)
 
 do
     let metaDeck = function
@@ -55,3 +57,4 @@ do
 
     ExploreDecks metaDeck
     closeLog ()
+    Console.ReadKey() |> ignore

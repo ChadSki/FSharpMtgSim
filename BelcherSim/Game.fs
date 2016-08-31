@@ -1,7 +1,6 @@
 ﻿module Game
 
 open System
-open Logging
 open Cards
 open Deck
 open CardGroup
@@ -35,7 +34,6 @@ let rec TakeAction (gs:GameState) : bool =
     // mana of those colors. Even if nothing is imprinted, it helps
     // boost the storm count.
     if gs.Hand |> HasCard ChromeMox then
-        log "P ChM"
         gs.Hand <- RemoveOneCard gs.Hand ChromeMox
         gs.Battlefield <- ChromeMox :: gs.Battlefield
         gs.StormCount <- gs.StormCount + 1
@@ -54,27 +52,18 @@ let rec TakeAction (gs:GameState) : bool =
         |> List.exists (fun maybeImprint ->
             let gs2 = gs.Clone()
             match maybeImprint with
-            | None -> log "Hypothetical: no imprint"
+            | None -> ()
             | Some imprint ->
                 let imprintColor = Color (Cost imprint)
-                log (sprintf "Hypothetical: imprint %s, +1 %s" (CardLabel imprint) (ColorLabel imprintColor))
                 gs2.Hand <- RemoveOneCard gs.Hand imprint
                 gs2.Mana <- gs2.Mana + OneMana imprintColor
-
-            // This if-statement breaks tail-recursion, but probably helps with debugging.
-            if TakeAction gs2 then
-                log "Hyp.succeeded!"
-                true
-            else
-                log "Hyp.failed"
-                false)
+            TakeAction gs2)
 
     // Next play all the free cards that allow us to draw.
 
     // Paying the life cost, GitaxianProbe is effectively free.
     // Draw a card and put GitaxianProbe in the graveyard.
     else if gs.Hand |> HasCard GitaxianProbe then
-        log "P GPr"
         let newHand = RemoveOneCard gs.Hand GitaxianProbe
         let newLibrary, drawn = Draw 1 gs.Library
         gs.Hand <- List.append newHand drawn
@@ -86,7 +75,6 @@ let rec TakeAction (gs:GameState) : bool =
     // Paying the life cost, StreetWraith is effectively free.
     // Draw a card and put StreetWraith in the graveyard.
     else if gs.Hand |> HasCard StreetWraith then
-        log "P SWr"
         let newHand = RemoveOneCard gs.Hand StreetWraith
         let newLibrary, drawn = Draw 1 gs.Library
         gs.Hand <-  List.append newHand drawn
@@ -99,7 +87,6 @@ let rec TakeAction (gs:GameState) : bool =
 
     // Cast LED now and increase the storm count. We can use it for mana later.
     else if gs.Hand |> HasCard LionsEyeDiamond then
-        log "P LED"
         gs.Hand <- RemoveOneCard gs.Hand LionsEyeDiamond
         gs.Battlefield <- LionsEyeDiamond :: gs.Battlefield
         gs.StormCount <- gs.StormCount + 1
@@ -107,7 +94,6 @@ let rec TakeAction (gs:GameState) : bool =
 
     // Cast LotusPetal now and immediately pop for redgreen mana.
     else if gs.Hand |> HasCard LotusPetal then
-        log "P LoP, +1R/G"
         gs.Hand <- RemoveOneCard gs.Hand LotusPetal
         gs.Mana <- gs.Mana + OneMana RedGreen
         gs.Graveyard <- LotusPetal :: gs.Graveyard
@@ -116,21 +102,18 @@ let rec TakeAction (gs:GameState) : bool =
 
     // Exile ElvishSpiritGuide to provide green mana.
     else if gs.Hand |> HasCard ElvishSpiritGuide then
-        log "Exile ESG, +1G"
         gs.Hand <- RemoveOneCard gs.Hand ElvishSpiritGuide
         gs.Mana <- gs.Mana + OneMana Green
         TakeAction gs
 
     // Exile SimianSpiritGuide to provide green mana.
     else if gs.Hand |> HasCard SimianSpiritGuide then
-        log "Exile SSG, +1R"
         gs.Hand <- RemoveOneCard gs.Hand SimianSpiritGuide
         gs.Mana <- gs.Mana + OneMana Red
         TakeAction gs
 
     // Play our land for the turn, immediately tapping for redgreen mana.
     else if not gs.PlayedLand && gs.Hand |> HasCard Taiga then
-        log "P Taiga, +1R/G"
         gs.Hand <- RemoveOneCard gs.Hand Taiga
         gs.Battlefield <- Taiga :: gs.Battlefield
         gs.Mana <- gs.Mana + OneMana RedGreen
@@ -141,7 +124,6 @@ let rec TakeAction (gs:GameState) : bool =
 
     // Manamorphose first since it allows us to draw and makes redgreen mana.
     else if gs.Hand |> HasCard Manamorphose && CanPay (Cost Manamorphose) gs.Mana then
-        log "P MMp, ~2x(R/G)"
         let newHand = RemoveOneCard gs.Hand Manamorphose
         let newLibrary, drawn = Draw 1 gs.Library
         gs.Hand <-  List.append newHand drawn
@@ -159,7 +141,6 @@ let rec TakeAction (gs:GameState) : bool =
 
     // TinderWall next because it costs scarcer green mana.
     else if gs.Hand |> HasCard TinderWall && CanPay (Cost TinderWall) gs.Mana then
-        log "P TiW, +2R"
         gs.Hand <- RemoveOneCard gs.Hand TinderWall
 
         // Pay first, then reap the bounty.
@@ -183,7 +164,6 @@ let rec TakeAction (gs:GameState) : bool =
                            | _ -> noMana))
             |> List.reduce (+)
 
-        log (sprintf "P RoF, +%dR" (bonusMana.red + 1))
         gs.Hand <- RemoveOneCard gs.Hand RiteOfFlame
 
         // Pay first, then reap the bounty.
@@ -198,7 +178,6 @@ let rec TakeAction (gs:GameState) : bool =
 
     // Relatively cheap mana source, dead simple.
     else if gs.Hand |> HasCard PyreticRitual && CanPay (Cost PyreticRitual) gs.Mana then
-        log "P PyR, +1R"
         gs.Hand <- RemoveOneCard gs.Hand PyreticRitual
 
         // Pay first, then reap the bounty.
@@ -213,7 +192,6 @@ let rec TakeAction (gs:GameState) : bool =
 
     // Large and simple mana source.
     else if gs.Hand |> HasCard SeethingSong && CanPay (Cost SeethingSong) gs.Mana then
-        log "P SSo, +2R"
         gs.Hand <- RemoveOneCard gs.Hand SeethingSong
 
         // Pay first, then reap the bounty.
@@ -229,20 +207,16 @@ let rec TakeAction (gs:GameState) : bool =
     // This works best if we have as much mana as possible,
     // so it's the last used mana source.
     else if gs.Hand |> HasCard DesperateRitual && CanPay (Cost DesperateRitual) gs.Mana then
-        log "P Drt, +1R"
         gs.Hand <- RemoveOneCard gs.Hand DesperateRitual
-
-        let mutable pendingCosts = Cost DesperateRitual
 
         // If there are other DesperateRituals in our hand, they can be
         // grafted onto this one.
+        let mutable pendingCosts = Cost DesperateRitual
         let mutable successfulGrafts = 0
         for desperateRitual in gs.Hand |> List.filter ((=) DesperateRitual) do
             if CanPay (pendingCosts + Cost DesperateRitual) gs.Mana then
                 pendingCosts <- pendingCosts + Cost DesperateRitual
                 successfulGrafts <- successfulGrafts + 1
-
-        log (sprintf "Graft %d, +%dR" successfulGrafts (successfulGrafts * 3))
 
         // Pay first, then reap the bounty.
         match gs.Mana - pendingCosts with
@@ -267,7 +241,7 @@ let rec TakeAction (gs:GameState) : bool =
     // LandGrant ->             # Free if no lands in hand
 
     else if gs.Hand |> HasCard GoblinCharbelcher && CanPay (Cost GoblinCharbelcher) gs.Mana then
-        log "P GCb"
+
         gs.Hand <- RemoveOneCard gs.Hand GoblinCharbelcher
 
         // Pay the casting cost.
@@ -307,12 +281,7 @@ let rec TakeAction (gs:GameState) : bool =
 
             // We win if we deal more than 20 damage
             let damage = (List.length revealed) * multiplier
-            if damage >= 20 then
-                log (sprintf "We win, dealing %d damage!" damage)
-                true
-            else
-                log (sprintf "We lose, dealing only %d damage." damage)
-                false
+            damage >= 20
 
     else
         false
@@ -323,7 +292,6 @@ let rec MulliganOrPlay (deck:Deck) (handSize:int) : bool =
 
     // Failure if we have mulliganed to death
     if handSize = 0 then
-        log "Mulliganed to death."
         false
     else
         // Shuffle the deck and draw our opening hand
@@ -331,8 +299,6 @@ let rec MulliganOrPlay (deck:Deck) (handSize:int) : bool =
 
         // Mulligan right away unless we hold key cards
         if hand |> Seq.exists IsWinCondition then
-            log (sprintf "Choosing a hand with %d win condition(s)."
-                         (hand |> List.filter IsWinCondition |> List.length))
 
             // Collect our free mana, if we get any.
             let numCott =
@@ -340,22 +306,14 @@ let rec MulliganOrPlay (deck:Deck) (handSize:int) : bool =
                                               then 1 else 0)
                      |> List.reduce (+)
 
-            if numCott > 0 then
-                log (sprintf "Collecting %d green mana from ChancellorOfTheTangle." numCott)
             let startingMana = { red=0; green=numCott; redgreen=0; colorless=0; other=0 }
 
             // Start playing with this hand
-            if TakeAction (new GameState (library, hand, [], [], startingMana, 0, false)) then
-                log "win"
-                true
-            else
-                log "lose"
-                false
+            TakeAction (new GameState (library, hand, [], [], startingMana, 0, false))
 
         else
             // Can we do the special mulligan?
             if hand |> Seq.exists ((=) SerumPowder) then
-                log "Mulliganing with SerumPowder."
 
                 // Exile Serum Powder and mulligan with the same hand size
                 let newDeck = deck |> List.map (fun (card, num) ->
@@ -364,7 +322,6 @@ let rec MulliganOrPlay (deck:Deck) (handSize:int) : bool =
 
             else
                 // Normal mulligan
-                log "Mulliganing."
                 MulliganOrPlay deck (handSize - 1)
 
 // Can we win the game? If so, return true. Otherwise, false.
