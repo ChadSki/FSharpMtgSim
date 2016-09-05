@@ -243,12 +243,47 @@ let rec TakeAction (gs:GameState) : bool =
 
     // Here come the win conditions, baby!
 
-    // TODOs:
-    // BurningWish ->           # Sorcery from sideboard (EtW)
-    // ChancellorOfTheTangle -> # Really? Casting this?
-    // EmptyTheWarrens ->       # Win condition
-    // GoblinCharbelcher ->     # Win condition
+    // Retrieve EmptyTheWarrens from our sideboard.
+    else if gs.Hand |> HasCard BurningWish && CanPay (Cost BurningWish) gs.Mana then
+        let newHand = RemoveOneCard gs.Hand BurningWish
+        gs.Hand <- EmptyTheWarrens :: newHand
+        gs.Graveyard <- BurningWish :: gs.Graveyard
+        gs.StormCount <- gs.StormCount + 1
 
+        // Pay the casting cost.
+        match gs.Mana - Cost BurningWish with
+        | None -> raise (new InvalidOperationException "We already asserted that we can pay for BurningWish.")
+        | Some result ->
+            gs.Mana <- result
+
+        TakeAction gs
+
+    // You should probably never have to cast this, but it can up the storm count just in case.
+    // Make sure there is enough mana leftover for EtW though.
+    else if gs.Hand |> HasCard ChancellorOfTheTangle &&
+            CanPay ((Cost ChancellorOfTheTangle) + (Cost EmptyTheWarrens)) gs.Mana then
+
+        let newHand = RemoveOneCard gs.Hand ChancellorOfTheTangle
+        gs.Hand <- newHand
+        gs.Battlefield <- ChancellorOfTheTangle :: gs.Battlefield
+        gs.StormCount <- gs.StormCount + 1
+
+        // Pay the casting cost.
+        match gs.Mana - Cost ChancellorOfTheTangle with
+        | None -> raise (new InvalidOperationException "We already asserted that we can pay for ChancellorOfTheTangle.")
+        | Some result ->
+            gs.Mana <- result
+
+        TakeAction gs
+
+    // TODO is this implemented right?
+    else if gs.Hand |> HasCard EmptyTheWarrens && CanPay (Cost EmptyTheWarrens) gs.Mana then
+        let newHand = RemoveOneCard gs.Hand EmptyTheWarrens
+        gs.Hand <- newHand
+        gs.Graveyard <- EmptyTheWarrens :: gs.Graveyard
+        gs.StormCount > 20
+
+    // TODO should this come before or after EtW?
     else if gs.Hand |> HasCard GoblinCharbelcher && CanPay (Cost GoblinCharbelcher) gs.Mana then
 
         gs.Hand <- RemoveOneCard gs.Hand GoblinCharbelcher
