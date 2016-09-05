@@ -59,6 +59,16 @@ let rec TakeAction (gs:GameState) : bool =
                 gs2.Mana <- gs2.Mana + OneMana imprintColor
             TakeAction gs2)
 
+    // If we can play LandGrant for free, do so!
+    else if gs.Hand |> HasCard LandGrant && not (gs.Hand |> HasCard Taiga) then
+        let newHand = RemoveOneCard gs.Hand LandGrant
+        let newLibrary = RemoveOneCard gs.Library Taiga |> Shuffle
+        gs.Hand <- Taiga :: newHand
+        gs.Library <- newLibrary
+        gs.Graveyard <- LandGrant :: gs.Graveyard
+        gs.StormCount <- gs.StormCount + 1
+        TakeAction gs
+
     // Next play all the free cards that allow us to draw.
 
     // Paying the life cost, GitaxianProbe is effectively free.
@@ -238,7 +248,6 @@ let rec TakeAction (gs:GameState) : bool =
     // ChancellorOfTheTangle -> # Really? Casting this?
     // EmptyTheWarrens ->       # Win condition
     // GoblinCharbelcher ->     # Win condition
-    // LandGrant ->             # Free if no lands in hand
 
     else if gs.Hand |> HasCard GoblinCharbelcher && CanPay (Cost GoblinCharbelcher) gs.Mana then
 
