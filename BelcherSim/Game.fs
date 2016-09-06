@@ -60,7 +60,8 @@ let rec TakeAction (gs:GameState) : bool =
             TakeAction gs2)
 
     // If we can play LandGrant for free, do so!
-    else if gs.Hand |> HasCard LandGrant && not (gs.Hand |> HasCard Taiga) then
+    // TODO: optimize metadeck so we don't take LandGrant without Taiga, then remove library-has condition.
+    else if gs.Hand |> HasCard LandGrant && not (gs.Hand |> HasCard Taiga) && gs.Library |> HasCard Taiga then
         let newHand = RemoveOneCard gs.Hand LandGrant
         let newLibrary = RemoveOneCard gs.Library Taiga |> Shuffle
         gs.Hand <- Taiga :: newHand
