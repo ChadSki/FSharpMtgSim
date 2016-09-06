@@ -60,12 +60,20 @@ let rec TakeAction (gs:GameState) : bool =
             TakeAction gs2)
 
     // If we can play LandGrant for free, do so!
-    // TODO: optimize metadeck so we don't take LandGrant without Taiga, then remove library-has condition.
-    else if gs.Hand |> HasCard LandGrant && not (gs.Hand |> HasCard Taiga) && gs.Library |> HasCard Taiga then
+    else if gs.Hand |> HasCard LandGrant && not (gs.Hand |> HasCard Taiga) then
         let newHand = RemoveOneCard gs.Hand LandGrant
-        let newLibrary = RemoveOneCard gs.Library Taiga |> Shuffle
-        gs.Hand <- Taiga :: newHand
-        gs.Library <- newLibrary
+
+        // Is Taiga even in the deck?
+        if gs.Library |> HasCard Taiga then
+            gs.Hand <- Taiga :: newHand
+            gs.Library <- RemoveOneCard gs.Library Taiga |> Shuffle
+
+        // Nope, lol. Shuffle the deck anyway, since we looked.
+        // At least this boosted the storm count.
+        else
+            gs.Hand <- newHand
+            gs.Library <- gs.Library |> Shuffle
+
         gs.Graveyard <- LandGrant :: gs.Graveyard
         gs.StormCount <- gs.StormCount + 1
         TakeAction gs
