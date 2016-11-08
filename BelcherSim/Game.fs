@@ -229,22 +229,21 @@ let rec TakeAction (gs:GameState) : bool =
         gs.Hand <- RemoveOneCard gs.Hand DesperateRitual
 
         // If there are other DesperateRituals in our hand, they can be
-        // grafted onto this one.
+        // grafted onto this card.
+        // Start with one successful cast, then iteratively add copies
+        // for as long as we can afford it.
         let mutable pendingCosts = Cost DesperateRitual
-        let mutable successfulGrafts = 0
+        let mutable successfulRituals = 1
         for desperateRitual in gs.Hand |> List.filter ((=) DesperateRitual) do
             if CanPay (pendingCosts + Cost DesperateRitual) gs.Mana then
                 pendingCosts <- pendingCosts + Cost DesperateRitual
-                successfulGrafts <- successfulGrafts + 1
+                successfulRituals <- successfulRituals + 1
 
         // Pay first, then reap the bounty.
         match gs.Mana - pendingCosts with
         | None -> raise (new InvalidOperationException "We should be able to pay for all these DesperateRituals.")
         | Some result ->
-            gs.Mana <- result + threeRedMana  // Mana for the host card itself.
-            while successfulGrafts > 0 do
-                gs.Mana <- gs.Mana + threeRedMana  // Bonus mana for each graft.
-                successfulGrafts <- successfulGrafts - 1
+            gs.Mana <- result + (threeRedMana * successfulRituals)
 
         gs.Graveyard <- DesperateRitual :: gs.Graveyard
         gs.StormCount <- gs.StormCount + 1

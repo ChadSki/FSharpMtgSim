@@ -15,13 +15,19 @@ open Cards
 type ManaAmount =
     { red:int; green:int; redgreen:int; colorless:int; other:int }
 
-    // Commutative
     static member (+) (left:ManaAmount, right:ManaAmount) =
         { red       = left.red       + right.red
           green     = left.green     + right.green
           redgreen  = left.redgreen  + right.redgreen
           colorless = left.colorless + right.colorless
           other     = left.other     + right.other }
+
+    static member (*) (left:ManaAmount, right:int) =
+        { red       = left.red       * right
+          green     = left.green     * right
+          redgreen  = left.redgreen  * right
+          colorless = left.colorless * right
+          other     = left.other     * right }
 
     // Important: Not commutative!
     // Rather than subtracting (spending) mana immediately, I recommend adding up
