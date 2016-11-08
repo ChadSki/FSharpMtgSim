@@ -13,7 +13,7 @@ type Deck = (Card * int) list
 
 // Generate a string that represents the given deck state
 let PrettyPrintDeck (deck:Deck) =
-    deck |> List.map (fun (_, count) -> sprintf "%d " count)
+    deck |> List.map (fun (card, count) -> sprintf "%d %s, " count (CardLabel card))
          |> List.reduce (+)
 
 
