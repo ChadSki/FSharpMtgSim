@@ -9,7 +9,8 @@ type MetaDeck = Card -> Range
 and Range = { min:int; max:int }
 
 // For each card, how many are present in this deck combination
-type Deck = (Card * int) list
+type CardCount = Card * int
+type Deck = CardCount list
 
 // Generate a string that represents the given deck state
 let PrettyPrintDeck (deck:Deck) =
