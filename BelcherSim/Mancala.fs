@@ -152,10 +152,10 @@ let rec NextCombination (oldBoard:Board) : Board option =
 // Given a board, iterate through all possible combinations
 let MancalaSequence emptyBoard numTokens =
     // #region Debug
-    //let prevElapsedSeconds = ref 0.
-    //let chunkSize = 4194304
-    //let total = ref 0
-    //let stopWatch = System.Diagnostics.Stopwatch.StartNew()
+    let prevElapsedSeconds = ref 0.
+    let chunkSize = 58000
+    let total = ref 0
+    let stopWatch = System.Diagnostics.Stopwatch.StartNew()
     log (sprintf "Started at %s" (DateTime.Now.ToString()))
     // #endregion
 
@@ -163,7 +163,7 @@ let MancalaSequence emptyBoard numTokens =
         let firstBoard = InitialCombination emptyBoard numTokens
         yield firstBoard
         let currBoard = ref firstBoard
-        //total := !total + 1
+        total := !total + 1
 
         let doneIterating = ref false
         while not !doneIterating do
@@ -171,15 +171,15 @@ let MancalaSequence emptyBoard numTokens =
             | Some newBoard ->
 
                 // #region Debug
-                //total := !total + 1
-                //if (!total % chunkSize) = 0 then
-                //    let elapsedSeconds = stopWatch.Elapsed.TotalSeconds
-                //    let averageSecondsPerChunk = elapsedSeconds / (float (!total / chunkSize))
-                //    log (sprintf "%s#%9d, %5.2f sec/chunk, %8.3f total sec, %5.3f since last"
-                //                 (PrettyPrintBoard newBoard) !total averageSecondsPerChunk
-                //                 elapsedSeconds (elapsedSeconds - !prevElapsedSeconds))
-                //    prevElapsedSeconds := elapsedSeconds
-                //()  // useful breakpoint location
+                total := !total + 1
+                if (!total % chunkSize) = 0 then
+                    let elapsedSeconds = stopWatch.Elapsed.TotalSeconds
+                    let averageSecondsPerChunk = elapsedSeconds / (float (!total / chunkSize))
+                    log (sprintf "%s#%9d, %5.2f sec/chunk, %8.3f total sec, %5.3f since last"
+                                 (PrettyPrintBoard newBoard) !total averageSecondsPerChunk
+                                 elapsedSeconds (elapsedSeconds - !prevElapsedSeconds))
+                    prevElapsedSeconds := elapsedSeconds
+                ()  // useful breakpoint location
                 // #endregion
 
                 yield newBoard
@@ -187,11 +187,11 @@ let MancalaSequence emptyBoard numTokens =
 
             | None ->
                 // #region Debug
-                //stopWatch.Stop()
+                stopWatch.Stop()
                 log (sprintf "Finished at %s" (DateTime.Now.ToString()))
-                //log (sprintf "Final total = %d" !total)
-                //log (sprintf "Elapsed time: %f total minutes" stopWatch.Elapsed.TotalMinutes)
-                //log (sprintf "              %f total seconds" stopWatch.Elapsed.TotalSeconds)
+                log (sprintf "Final total = %d" !total)
+                log (sprintf "Elapsed time: %f total minutes" stopWatch.Elapsed.TotalMinutes)
+                log (sprintf "              %f total seconds" stopWatch.Elapsed.TotalSeconds)
                 // #endregion
                 doneIterating := true
     }

@@ -10,9 +10,17 @@ while File.Exists(LogName logNumber) do
 
 let logFile = new StreamWriter(LogName logNumber)
 
+let logAgent = MailboxProcessor.Start(fun inbox -> 
+        let rec messageLoop() = async {
+            let! (msg:string) = inbox.Receive()
+            logFile.WriteLine(msg)
+            printfn "%s" msg
+            return! messageLoop()
+            }
+        messageLoop())
+
 let log (str:string) =
-    logFile.WriteLine(str)
-    printfn "%s" str
+    logAgent.Post str
 
 log (sprintf "Opened logfile '%s'" (LogName logNumber))
 
